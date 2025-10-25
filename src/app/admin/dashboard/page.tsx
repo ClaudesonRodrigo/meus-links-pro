@@ -38,6 +38,16 @@ export default function DashboardPage() {
   // 2. DETERMINAR SE O PLANO É PRO (baseado no userData do contexto)
   const isProPlan = userData?.plan === 'pro';
 
+  // SEU NÚMERO DE WHATSAPP (com código do país, sem '+' ou espaços)
+  const whatsappNumber = "5579996337995";
+
+  // Função para gerar link do WhatsApp
+  const generateWhatsAppLink = (planType: 'Mensal' | 'Anual', price: string) => {
+    const message = `Olá! Gostaria de fazer o upgrade para o plano Pro ${planType} (R$${price}).`;
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  };
+
+
   // Função para buscar os dados da página do usuário logado
   const fetchPageData = async () => {
     if (user) {
@@ -59,7 +69,7 @@ export default function DashboardPage() {
     if (!loading && user) {
       fetchPageData();
     }
-  }, [user, loading]);
+  }, [user, loading]); // Removido fetchPageData das dependências para evitar loop se a função não for memoizada
 
   // Protege a rota: redireciona para login se não estiver logado
   useEffect(() => {
@@ -140,7 +150,7 @@ export default function DashboardPage() {
       ...updatedLinks[indexToUpdate],
       title: editingTitle,
       url: editingUrl,
-      ...(editingIcon ? { icon: editingIcon } : { icon: undefined }),
+      ...(editingIcon ? { icon: editingIcon } : { icon: undefined }), // Garante que icon seja undefined se vazio
     };
     try {
       await updateLinksOnPage(pageSlug, updatedLinks);
@@ -177,7 +187,7 @@ export default function DashboardPage() {
       alert('Este é um tema Pro! Faça upgrade para usá-lo.');
       return;
     }
-    
+
     if (!pageSlug) return;
     try {
       await updatePageTheme(pageSlug, themeName);
@@ -236,7 +246,7 @@ export default function DashboardPage() {
               Gerencie sua página de links abaixo.
             </p>
           </div>
-          
+
           <div className="bg-white p-6 rounded-lg shadow mb-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Sua Página está no Ar!</h3>
             <p className="text-gray-600 mb-4">Compartilhe este link com seu público:</p>
@@ -256,19 +266,19 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Bloco de Aparência */}
           <div className="bg-white p-6 rounded-lg shadow mb-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Aparência</h3>
             <p className="text-gray-600 mb-4">Escolha um tema para sua página pública.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {themes.map((theme) => {
                 const isActive = (pageData?.theme || 'light') === theme.name;
-                // 5. LÓGICA DE DESABILITAR
                 const isDisabled = theme.isPro && !isProPlan;
 
                 return (
                   <button
                     key={theme.name}
-                    onClick={() => handleThemeChange(theme.name)} // handleThemeChange agora tem a lógica de verificação
+                    onClick={() => handleThemeChange(theme.name)}
                     disabled={isDisabled}
                     className={`relative p-4 rounded-lg border-2 text-center transition-all duration-150 ease-in-out focus:outline-none ${
                       isActive
@@ -283,24 +293,46 @@ export default function DashboardPage() {
                     <div className={`h-10 w-full rounded mb-2 border border-gray-200 ${theme.colorClass}`}></div>
                     <span className="text-sm font-medium text-gray-700 flex items-center justify-center gap-1">
                       {theme.label}
-                      {/* 6. ÍCONE DE CADEADO */}
                       {isDisabled && <FaLock className="text-gray-400 w-3 h-3" />}
                     </span>
                   </button>
                 );
               })}
             </div>
-            {/* 7. MENSAGEM DE UPGRADE */}
+
+            {/* --- SEÇÃO DE UPGRADE MODIFICADA --- */}
             {!isProPlan && (
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Gostou dos temas coloridos? ✨{' '}
-                  <a href="#" onClick={(e) => { e.preventDefault(); alert('Página de upgrade em breve!'); }} className="text-blue-600 hover:underline font-medium">
-                    Faça upgrade para o plano Pro!
-                  </a>
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-center text-gray-800 mb-4">
+                  ✨ Desbloqueie todos os temas com o Plano Pro! ✨
+                </h4>
+                <p className="text-center text-gray-600 mb-6">
+                  Escolha seu plano e fale conosco no WhatsApp para ativar:
                 </p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  {/* Botão Plano Mensal */}
+                  <a
+                    href={generateWhatsAppLink('Mensal', '9,99')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
+                  >
+                    Pro Mensal - R$9,99
+                  </a>
+                  {/* Botão Plano Anual */}
+                  <a
+                    href={generateWhatsAppLink('Anual', '90,00')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
+                  >
+                    Pro Anual - R$90,00 <span className="text-xs opacity-80">(Economize!)</span>
+                  </a>
+                </div>
               </div>
             )}
+            {/* --- FIM DA SEÇÃO DE UPGRADE MODIFICADA --- */}
+
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow mb-8">
