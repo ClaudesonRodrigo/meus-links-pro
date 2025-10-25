@@ -5,7 +5,7 @@ import React, { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/authService';
-import { getPageDataForUser, addLinkToPage, deleteLinkFromPage, updateLinksOnPage, PageData, LinkData } from '@/lib/pageService';
+import { getPageDataForUser, addLinkToPage, deleteLinkFromPage, updateLinksOnPage, updatePageTheme, PageData, LinkData } from '@/lib/pageService';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -15,14 +15,14 @@ export default function DashboardPage() {
   const [pageSlug, setPageSlug] = useState<string | null>(null);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkIcon, setNewLinkIcon] = useState('');
   const [isLoadingData, setIsLoadingData] = useState(true);
-
-  // NOVOS ESTADOS PARA CONTROLAR A EDIÇÃO
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingUrl, setEditingUrl] = useState('');
+  const [editingIcon, setEditingIcon] = useState('');
+  const [copyButtonText, setCopyButtonText] = useState('Copiar');
 
-  // Função para buscar os dados
   const fetchPageData = async () => {
     if (user) {
       setIsLoadingData(true);
@@ -35,35 +35,32 @@ export default function DashboardPage() {
     }
   };
 
-  // Efeito para buscar os dados quando o usuário é carregado
   useEffect(() => {
     if (!loading && user) {
       fetchPageData();
     }
   }, [user, loading]);
 
-  // Efeito para proteger a rota
   useEffect(() => {
     if (!loading && !user) {
       router.push('/admin/login');
     }
   }, [user, loading, router]);
 
-  // Handler para o botão de sair
   const handleLogout = async () => {
     await signOutUser();
   };
-  
-  // FUNÇÃO PARA ADICIONAR UM NOVO LINK
+
   const handleAddLink = async (e: FormEvent) => {
     e.preventDefault();
     if (!pageSlug || !newLinkTitle || !newLinkUrl) {
-      alert("Por favor, preencha todos os campos.");
+      alert("Por favor, preencha o Título e a URL.");
       return;
     }
     const newLink: LinkData = {
       title: newLinkTitle,
       url: newLinkUrl,
+      icon: newLinkIcon || undefined,
       type: "website",
       order: pageData?.links.length ? pageData.links.length + 1 : 1,
     };
@@ -71,13 +68,13 @@ export default function DashboardPage() {
       await addLinkToPage(pageSlug, newLink);
       setNewLinkTitle('');
       setNewLinkUrl('');
+      setNewLinkIcon('');
       await fetchPageData();
     } catch (error) {
       alert("Falha ao adicionar o link.");
     }
   };
 
-  // FUNÇÃO PARA EXCLUIR UM LINK
   const handleDeleteLink = async (linkToDelete: LinkData) => {
     if (!window.confirm(`Tem certeza que deseja excluir o link "${linkToDelete.title}"?`)) {
       return;
@@ -94,17 +91,18 @@ export default function DashboardPage() {
     }
   };
 
-  // FUNÇÕES PARA GERENCIAR O MODO DE EDIÇÃO
   const handleEditClick = (link: LinkData, index: number) => {
     setEditingIndex(index);
     setEditingTitle(link.title);
     setEditingUrl(link.url);
+    setEditingIcon(link.icon || '');
   };
 
   const handleCancelEdit = () => {
     setEditingIndex(null);
     setEditingTitle('');
     setEditingUrl('');
+    setEditingIcon('');
   };
 
   const handleUpdateLink = async (indexToUpdate: number) => {
@@ -114,6 +112,7 @@ export default function DashboardPage() {
       ...updatedLinks[indexToUpdate],
       title: editingTitle,
       url: editingUrl,
+      icon: editingIcon || undefined,
     };
     try {
       await updateLinksOnPage(pageSlug, updatedLinks);
@@ -121,6 +120,26 @@ export default function DashboardPage() {
       await fetchPageData();
     } catch (error) {
       alert("Falha ao atualizar o link.");
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (!pageSlug) return;
+    const shareableUrl = `${window.location.origin}/${pageSlug}`;
+    navigator.clipboard.writeText(shareableUrl);
+    setCopyButtonText('Copiado!');
+    setTimeout(() => {
+      setCopyButtonText('Copiar');
+    }, 2000);
+  };
+
+  const handleThemeChange = async (theme: string) => {
+    if (!pageSlug) return;
+    try {
+      await updatePageTheme(pageSlug, theme);
+      await fetchPageData();
+    } catch (error) {
+      alert("Falha ao atualizar o tema.");
     }
   };
 
@@ -136,57 +155,87 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <nav className="bg-white shadow-sm">
-          {/* ...código da navBar (inalterado)... */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex-shrink-0 flex items-center">
+                <h1 className="text-xl font-bold text-gray-800">Meu Painel</h1>
+              </div>
+              <div className="flex items-center">
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md text-sm transition duration-150 ease-in-out"
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+          </div>
         </nav>
-
         <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="bg-white p-6 rounded-lg shadow mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               Bem-vindo, {pageData?.title || user.displayName}!
             </h2>
             <p className="text-gray-700 mb-2">
-              Edite sua página de links abaixo.
+              Gerencie sua página de links abaixo.
             </p>
           </div>
-          
+
+          <div className="bg-white p-6 rounded-lg shadow mb-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Sua Página está no Ar!</h3>
+            <p className="text-gray-600 mb-4">Compartilhe este link com seu público:</p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 p-3 bg-gray-100 rounded-md">
+              <span className="text-blue-600 truncate font-mono text-sm">
+                {`${typeof window !== 'undefined' ? window.location.origin : ''}/${pageSlug}`}
+              </span>
+              <button
+                onClick={handleCopyUrl}
+                className="w-full sm:w-auto sm:ml-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md text-sm transition-all duration-200 ease-in-out whitespace-nowrap"
+              >
+                {copyButtonText}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow mb-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Aparência</h3>
+            <p className="text-gray-600 mb-4">Escolha um tema para sua página.</p>
+            <div className="flex gap-4">
+              <button onClick={() => handleThemeChange('light')} className={`p-4 rounded-lg border-2 ${pageData?.theme !== 'dark' ? 'border-blue-600' : 'border-gray-300'}`}>Claro</button>
+              <button onClick={() => handleThemeChange('dark')} className={`p-4 rounded-lg border-2 ${pageData?.theme === 'dark' ? 'border-blue-600' : 'border-gray-300'}`}>Escuro</button>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-lg shadow mb-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Adicionar Novo Link</h3>
-            <form onSubmit={handleAddLink}>
-              <div className="mb-4">
+            <form onSubmit={handleAddLink} className="space-y-4">
+              <div>
                 <label htmlFor="linkTitle" className="block text-sm font-medium text-gray-700">Título</label>
                 <input
-                  type="text"
-                  id="linkTitle"
-                  value={newLinkTitle}
-                  onChange={(e) => setNewLinkTitle(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Ex: Meu Portfólio"
+                  type="text" id="linkTitle" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ex: Meu Portfólio"
                 />
               </div>
-              <div className="mb-4">
+              <div>
                 <label htmlFor="linkUrl" className="block text-sm font-medium text-gray-700">URL</label>
                 <input
-                  type="url"
-                  id="linkUrl"
-                  value={newLinkUrl}
-                  onChange={(e) => setNewLinkUrl(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="https://..."
+                  type="url" id="linkUrl" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="https://..."
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out"
-              >
-                Adicionar Link
-              </button>
+              <div>
+                <label htmlFor="linkIcon" className="block text-sm font-medium text-gray-700">Ícone (opcional)</label>
+                <input
+                  type="text" id="linkIcon" value={newLinkIcon} onChange={(e) => setNewLinkIcon(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ex: github, instagram, linkedin, globe"
+                />
+              </div>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">Adicionar Link</button>
             </form>
           </div>
 
           <div className="mt-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Meus Links Atuais
-            </h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Meus Links Atuais</h3>
             <div className="bg-white p-6 rounded-lg shadow space-y-4">
               {pageData?.links && pageData.links.length > 0 ? (
                 pageData.links.map((link, index) => (
@@ -194,16 +243,16 @@ export default function DashboardPage() {
                     {editingIndex === index ? (
                       <div className="space-y-3">
                         <input
-                          type="text"
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
+                          type="text" value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)}
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                         />
                         <input
-                          type="url"
-                          value={editingUrl}
-                          onChange={(e) => setEditingUrl(e.target.value)}
+                          type="url" value={editingUrl} onChange={(e) => setEditingUrl(e.target.value)}
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                        <input
+                          type="text" value={editingIcon} onChange={(e) => setEditingIcon(e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ícone (opcional)"
                         />
                         <div className="flex justify-end space-x-2">
                           <button onClick={handleCancelEdit} className="bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-1 px-3 rounded-md text-sm">Cancelar</button>
@@ -211,14 +260,16 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-800">{link.title}</p>
-                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">{link.url}</a>
+                      // ALTERAÇÃO PARA RESPONSIVIDADE AQUI
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0"> {/* Garante que o texto quebre se necessário */}
+                          <p className="font-semibold text-gray-800 truncate">{link.title}</p> {/* truncate evita que título muito longo quebre o layout */}
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-all">{link.url}</a> {/* break-all para URLS longas */}
                         </div>
-                        <div className='space-x-2'>
-                          <button onClick={() => handleEditClick(link, index)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold py-1 px-3 rounded-md text-sm">Editar</button>
-                          <button onClick={() => handleDeleteLink(link)} className="bg-red-100 text-red-700 hover:bg-red-200 font-semibold py-1 px-3 rounded-md text-sm">Excluir</button>
+                        {/* Container dos botões agora é flexível */}
+                        <div className='flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2 w-full sm:w-auto'>
+                          <button onClick={() => handleEditClick(link, index)} className="w-full sm:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold py-1 px-3 rounded-md text-sm">Editar</button>
+                          <button onClick={() => handleDeleteLink(link)} className="w-full sm:w-auto bg-red-100 text-red-700 hover:bg-red-200 font-semibold py-1 px-3 rounded-md text-sm">Excluir</button>
                         </div>
                       </div>
                     )}
@@ -233,6 +284,5 @@ export default function DashboardPage() {
       </div>
     );
   }
-
   return null;
 }
