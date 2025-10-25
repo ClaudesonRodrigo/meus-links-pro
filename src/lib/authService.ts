@@ -90,7 +90,7 @@ export const signInWithGoogle = async (): Promise<User | null> => {
     // Captura erros do processo de autenticação do Google (ex: popup bloqueado, erro de rede)
     console.error("Erro GERAL no processo signInWithGoogle:", error);
     // Verifica se é erro de domínio não autorizado (útil para deploy)
-    // @ts-ignore
+    // @ts-expect-error // <--- ALTERAÇÃO REALIZADA AQUI
     if (error.code === 'auth/unauthorized-domain') {
       alert("Erro: O domínio do site não está autorizado no Firebase. Verifique a configuração de Authentication -> Settings -> Authorized domains.");
     }
