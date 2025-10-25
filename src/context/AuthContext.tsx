@@ -3,19 +3,19 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, DocumentData } from 'firebase/firestore'; // 1. IMPORTAR FUNÇÕES DO FIRESTORE
-import { auth, db } from '@/lib/firebaseClient'; // Importar 'db' também
+import { doc, getDoc, DocumentData } from 'firebase/firestore'; // IMPORTAR FUNÇÕES DO FIRESTORE
+import { auth, db } from '@/lib/firebaseClient'; // IMPORTAR 'db'
 
-// 2. DEFINIR UM TIPO PARA OS DADOS DO FIRESTORE (pode expandir depois)
+// DEFINIR UM TIPO PARA OS NOSSOS DADOS DO USUÁRIO NO FIRESTORE
 type UserData = {
   plan: string;
   pageSlug: string;
-  displayName?: string; // Incluir outros campos úteis
+  displayName?: string;
   email?: string;
-  // Adicione outros campos que você tenha na coleção 'users'
+  // Adicione qualquer outro campo que você tenha na coleção 'users'
 };
 
-// 3. ATUALIZAR O TIPO DO CONTEXTO
+// ATUALIZAR O TIPO DO CONTEXTO
 type AuthContextType = {
   user: User | null; // O objeto User do Firebase Auth
   userData: UserData | null; // Nossos dados adicionais do Firestore
@@ -32,23 +32,26 @@ const AuthContext = createContext<AuthContextType>({
 // Componente Provedor
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null); // 4. NOVO ESTADO
+  const [userData, setUserData] = useState<UserData | null>(null); // NOVO ESTADO
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // onAuthStateChanged é o "ouvinte" do Firebase
     const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {
+      setLoading(true); // Inicia carregamento ao detectar mudança
       if (userAuth) {
         // Usuário está logado (Firebase Auth confirmou)
         setUser(userAuth);
 
-        // 5. BUSCAR DADOS ADICIONAIS NO FIRESTORE
+        // BUSCAR DADOS ADICIONAIS NO FIRESTORE
         const userDocRef = doc(db, "users", userAuth.uid);
         try {
           const docSnap = await getDoc(userDocRef);
           if (docSnap.exists()) {
             setUserData(docSnap.data() as UserData); // Armazena os dados do Firestore
+            // console.log("Dados do usuário carregados:", docSnap.data()); // Log opcional
           } else {
-            console.log("Documento do usuário não encontrado no Firestore!");
+            console.warn("Documento do usuário não encontrado no Firestore para UID:", userAuth.uid);
             setUserData(null); // Garante que não há dados antigos
           }
         } catch (error) {
@@ -59,18 +62,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         // Usuário está deslogado
         setUser(null);
-        setUserData(null); // 6. LIMPAR OS DADOS DO FIRESTORE
+        setUserData(null); // LIMPAR OS DADOS DO FIRESTORE
       }
       setLoading(false); // Marca que a verificação terminou
     });
 
     // Limpa o listener ao desmontar
     return () => unsubscribe();
-  }, []); // Array vazio garante que rode apenas uma vez
+  }, []); // Array vazio garante que rode apenas uma vez na montagem inicial
 
   return (
-    // 7. FORNECER 'userData' NO CONTEXTO
+    // FORNECER 'userData' NO CONTEXTO
     <AuthContext.Provider value={{ user, userData, loading }}>
+      {/* Renderiza children apenas quando o carregamento inicial termina para evitar piscar */}
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -53,8 +53,8 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
       // Retorna tanto o slug quanto os dados
       return { slug: pageSlug, data: pageDocSnap.data() };
     } else {
-      console.log("Nenhum documento de página encontrado para este usuário!");
-      return null; // Ou talvez criar um documento padrão aqui?
+      console.log("Nenhum documento de página encontrado para este usuário!"); // Alterado log
+      return null;
     }
   } catch (error) {
     console.error("Erro ao buscar dados da página do usuário:", error);
@@ -70,19 +70,17 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
 export const addLinkToPage = async (pageSlug: string, newLink: LinkData): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
-    // arrayUnion garante que o link não seja duplicado se já existir (pela igualdade do objeto)
     await updateDoc(pageDocRef, {
       links: arrayUnion(newLink)
     });
   } catch (error) {
     console.error("Erro ao adicionar novo link:", error);
-    throw new Error("Não foi possível adicionar o link."); // Re-lança para tratamento no frontend
+    throw new Error("Não foi possível adicionar o link.");
   }
 };
 
 /**
  * Remove um link específico do array de links de uma página.
- * Importante: O objeto 'linkToDelete' deve ser exatamente igual ao que está no array.
  * @param pageSlug - O slug da página a ser atualizada.
  * @param linkToDelete - O objeto exato do link a ser removido.
  */
@@ -100,14 +98,12 @@ export const deleteLinkFromPage = async (pageSlug: string, linkToDelete: LinkDat
 
 /**
  * ATUALIZA O ARRAY DE LINKS INTEIRO NO DOCUMENTO.
- * Usado para operações como reordenar ou editar um link existente.
  * @param pageSlug - O slug da página a ser atualizada.
  * @param updatedLinks - O array de links completo e atualizado.
  */
 export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData[]): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
-    // Substitui completamente o array 'links' pelo novo array fornecido
     await updateDoc(pageDocRef, {
       links: updatedLinks
     });
@@ -119,7 +115,6 @@ export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData
 
 /**
  * Busca os dados de uma página pública diretamente pelo seu slug.
- * Usado pela página pública [slug].
  * @param slug - O identificador (ID do documento) da página na coleção 'pages'.
  * @returns Os dados completos da página ou null se não for encontrada.
  */
@@ -149,7 +144,7 @@ export const updatePageTheme = async (pageSlug: string, theme: string): Promise<
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
     await updateDoc(pageDocRef, {
-      theme: theme // Atualiza somente o campo 'theme'
+      theme: theme
     });
   } catch (error) {
     console.error("Erro ao atualizar o tema:", error);
