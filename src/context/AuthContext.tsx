@@ -3,48 +3,78 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebaseClient';
+import { doc, getDoc, DocumentData } from 'firebase/firestore'; // 1. IMPORTAR FUNÇÕES DO FIRESTORE
+import { auth, db } from '@/lib/firebaseClient'; // Importar 'db' também
 
-// Definimos o tipo de valor que nosso contexto irá fornecer
-type AuthContextType = {
-  user: User | null;
-  loading: boolean;
+// 2. DEFINIR UM TIPO PARA OS DADOS DO FIRESTORE (pode expandir depois)
+type UserData = {
+  plan: string;
+  pageSlug: string;
+  displayName?: string; // Incluir outros campos úteis
+  email?: string;
+  // Adicione outros campos que você tenha na coleção 'users'
 };
 
-// Criamos o contexto com um valor inicial padrão
+// 3. ATUALIZAR O TIPO DO CONTEXTO
+type AuthContextType = {
+  user: User | null; // O objeto User do Firebase Auth
+  userData: UserData | null; // Nossos dados adicionais do Firestore
+  loading: boolean; // Indica se a verificação inicial está ocorrendo
+};
+
+// Valor inicial do contexto
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  userData: null,
   loading: true,
 });
 
-// Este é o nosso componente Provedor
+// Componente Provedor
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null); // 4. NOVO ESTADO
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // onAuthStateChanged é o "ouvinte" do Firebase que verifica o status do login
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // Usuário está logado
-        setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {
+      if (userAuth) {
+        // Usuário está logado (Firebase Auth confirmou)
+        setUser(userAuth);
+
+        // 5. BUSCAR DADOS ADICIONAIS NO FIRESTORE
+        const userDocRef = doc(db, "users", userAuth.uid);
+        try {
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            setUserData(docSnap.data() as UserData); // Armazena os dados do Firestore
+          } else {
+            console.log("Documento do usuário não encontrado no Firestore!");
+            setUserData(null); // Garante que não há dados antigos
+          }
+        } catch (error) {
+          console.error("Erro ao buscar dados do usuário no Firestore:", error);
+          setUserData(null);
+        }
+
       } else {
         // Usuário está deslogado
         setUser(null);
+        setUserData(null); // 6. LIMPAR OS DADOS DO FIRESTORE
       }
-      setLoading(false); // Marca que a verificação inicial terminou
+      setLoading(false); // Marca que a verificação terminou
     });
 
-    // Limpa o ouvinte quando o componente é desmontado
+    // Limpa o listener ao desmontar
     return () => unsubscribe();
-  }, []); // O array vazio [] garante que este efeito rode apenas uma vez
+  }, []); // Array vazio garante que rode apenas uma vez
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    // 7. FORNECER 'userData' NO CONTEXTO
+    <AuthContext.Provider value={{ user, userData, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-// Hook customizado para facilitar o uso do contexto em outras partes do app
+// Hook customizado para usar o contexto
 export const useAuth = () => useContext(AuthContext);

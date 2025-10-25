@@ -1,6 +1,6 @@
 // src/lib/authService.ts
 
-import { GoogleAuthProvider, signInWithPopup, User, signOut } from "firebase/auth"; // 1. Importe o 'signOut'
+import { GoogleAuthProvider, signInWithPopup, User, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebaseClient"; // Nossas configurações do Firebase
 
@@ -35,6 +35,7 @@ export const signInWithGoogle = async (): Promise<User | null> => {
         displayName: user.displayName,
         pageSlug: pageSlug,
         createdAt: new Date(),
+        plan: 'free', // <-- ATUALIZAÇÃO IMPORTANTE
       });
 
       // 2. Cria o documento na coleção 'pages'
@@ -44,12 +45,14 @@ export const signInWithGoogle = async (): Promise<User | null> => {
         title: user.displayName,
         bio: `Bem-vindo à minha página!`,
         profileImageUrl: user.photoURL,
+        theme: 'light', // <-- Adiciona tema padrão
         links: [
           { 
             title: "Meu Site Pessoal", 
             url: "https://seusite.com", 
             type: "website", 
-            order: 1 
+            order: 1,
+            icon: 'globe' // <-- Adiciona ícone padrão
           }
         ]
       });
@@ -62,7 +65,7 @@ export const signInWithGoogle = async (): Promise<User | null> => {
   }
 };
 
-// 2. ADICIONE A NOVA FUNÇÃO DE LOGOUT
+// Função de Logout
 export const signOutUser = async (): Promise<void> => {
   try {
     await signOut(auth);
