@@ -1,26 +1,95 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 
+/* Tema Padrão (Light) - Aplicado ao :root (html) por padrão */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #f3f4f6; /* bg-gray-100 */
+  --color-text: #1f2937; /* text-gray-800 */
+  --color-text-muted: #4b5563; /* text-gray-600 */
+  --color-button-bg: #2563eb; /* bg-blue-600 */
+  --color-button-text: #ffffff; /* text-white */
+  --color-button-hover-bg: #1d4ed8; /* hover:bg-blue-700 */
+  --color-image-border: #ffffff; /* border-white */
+
+  /* Variáveis padrão para gradientes (caso não sejam sobrescritas) */
+  --color-ocean-start: #1cb5e0;
+  --color-ocean-end: #000046;
+  --color-sunset-start: #ff7e5f;
+  --color-sunset-end: #feb47b;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Tema Escuro - Ativado pela classe 'theme-dark' no html */
+.theme-dark {
+  --color-bg: #111827; /* bg-gray-900 */
+  --color-text: #e5e7eb; /* text-gray-200 */
+  --color-text-muted: #9ca3af; /* text-gray-400 */
+  --color-button-bg: #1d4ed8; /* bg-blue-700 */
+  --color-button-text: #ffffff;
+  --color-button-hover-bg: #1e40af; /* hover:bg-blue-800 */
+  --color-image-border: #374151; /* border-gray-700 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Tema Ocean */
+.theme-ocean {
+  --color-bg: transparent; /* Fundo será o gradiente aplicado no body */
+  --color-text: #ffffff;
+  --color-text-muted: #e0e0e0;
+  --color-button-bg: #ffffff;
+  --color-button-text: #157394;
+  --color-button-hover-bg: #e0f7ff;
+  --color-image-border: #ffffff;
 }
 
+/* Tema Sunset */
+.theme-sunset {
+  --color-bg: transparent;
+  --color-text: #ffffff;
+  --color-text-muted: #f0f0f0;
+  --color-button-bg: #ffffff;
+  --color-button-text: #c1573c;
+  --color-button-hover-bg: #fff0eb;
+  --color-image-border: #ffffff;
+}
+
+/* Tema Forest */
+.theme-forest {
+  --color-bg: #1A4D2E;
+  --color-text: #FAF3E0;
+  --color-text-muted: #e4dccf;
+  --color-button-bg: #FAF3E0;
+  --color-button-text: #1A4D2E;
+  --color-button-hover-bg: #e4dccf;
+  --color-image-border: #FAF3E0;
+}
+
+/* Tema Bubblegum */
+.theme-bubblegum {
+  --color-bg: #FFC0CB;
+  --color-text: #333333;
+  --color-text-muted: #555555;
+  --color-button-bg: #ffffff;
+  --color-button-text: #D14A89;
+  --color-button-hover-bg: #ffe4e8;
+  --color-image-border: #ffffff;
+}
+
+
+/* Estilos base do body usando as variáveis CSS */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh; /* Garante que o fundo ocupe toda a altura */
+}
+
+/* Aplica gradientes específicos quando essas classes estão no HTML */
+/* É importante aplicar no body também para garantir a cobertura */
+.theme-ocean, .theme-ocean body {
+  background-image: linear-gradient(to right, var(--color-ocean-start), var(--color-ocean-end));
+  background-color: var(--color-ocean-end); /* Fallback caso gradiente não funcione */
+}
+.theme-sunset, .theme-sunset body {
+  background-image: linear-gradient(to right, var(--color-sunset-start), var(--color-sunset-end));
+  background-color: var(--color-sunset-end);
 }

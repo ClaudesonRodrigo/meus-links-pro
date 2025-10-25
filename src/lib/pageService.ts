@@ -7,22 +7,27 @@ import { db } from "./firebaseClient";
 export type LinkData = {
   title: string;
   url: string;
-  type: string;
+  type: string; // Mantido para futura customização, se necessário
   order: number;
-  icon?: string; // NOVO CAMPO
+  icon?: string; // NOVO CAMPO para nome do ícone (ex: 'github', 'instagram')
 };
 
 // Tipo para os dados da página inteira (com campo 'theme' opcional)
 export type PageData = {
   title: string;
   bio: string;
+  profileImageUrl?: string; // Tornar opcional caso o usuário não tenha foto
   links: LinkData[];
-  theme?: string; // NOVO CAMPO
-  profileImageUrl?: string; // Adicionado para garantir que o tipo esteja completo
+  theme?: string; // NOVO CAMPO para nome do tema (ex: 'dark', 'ocean')
+  userId: string; // Adicionado para garantir que o tipo esteja completo e para regras de segurança
+  slug: string; // Adicionado para garantir que o tipo esteja completo
 }
 
 /**
- * Busca os dados da página de um usuário.
+ * Busca os dados da página de um usuário pelo ID do usuário.
+ * Usado principalmente no Dashboard.
+ * @param userId - O ID do usuário autenticado.
+ * @returns Um objeto contendo o slug e os dados da página, ou null.
  */
 export const getPageDataForUser = async (userId: string): Promise<{ slug: string, data: DocumentData } | null> => {
   try {
@@ -30,7 +35,7 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      console.error("Documento de usuário não encontrado!");
+      console.error("Documento de usuário não encontrado para getPageDataForUser!");
       return null;
     }
 
@@ -40,38 +45,46 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
       return null;
     }
 
+    // Usar o pageSlug para buscar os dados da página
     const pageDocRef = doc(db, "pages", pageSlug);
     const pageDocSnap = await getDoc(pageDocRef);
 
     if (pageDocSnap.exists()) {
+      // Retorna tanto o slug quanto os dados
       return { slug: pageSlug, data: pageDocSnap.data() };
     } else {
-      console.log("Nenhum documento de página encontrado!");
-      return null;
+      console.log("Nenhum documento de página encontrado para este usuário!");
+      return null; // Ou talvez criar um documento padrão aqui?
     }
   } catch (error) {
-    console.error("Erro ao buscar dados da página:", error);
+    console.error("Erro ao buscar dados da página do usuário:", error);
     return null;
   }
 };
 
 /**
- * Adiciona um novo link ao array de links de uma página.
+ * Adiciona um novo link ao array de links de uma página específica.
+ * @param pageSlug - O slug da página a ser atualizada.
+ * @param newLink - O objeto do novo link a ser adicionado.
  */
 export const addLinkToPage = async (pageSlug: string, newLink: LinkData): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
+    // arrayUnion garante que o link não seja duplicado se já existir (pela igualdade do objeto)
     await updateDoc(pageDocRef, {
       links: arrayUnion(newLink)
     });
   } catch (error) {
     console.error("Erro ao adicionar novo link:", error);
-    throw new Error("Não foi possível adicionar o link.");
+    throw new Error("Não foi possível adicionar o link."); // Re-lança para tratamento no frontend
   }
 };
 
 /**
  * Remove um link específico do array de links de uma página.
+ * Importante: O objeto 'linkToDelete' deve ser exatamente igual ao que está no array.
+ * @param pageSlug - O slug da página a ser atualizada.
+ * @param linkToDelete - O objeto exato do link a ser removido.
  */
 export const deleteLinkFromPage = async (pageSlug: string, linkToDelete: LinkData): Promise<void> => {
   try {
@@ -87,10 +100,14 @@ export const deleteLinkFromPage = async (pageSlug: string, linkToDelete: LinkDat
 
 /**
  * ATUALIZA O ARRAY DE LINKS INTEIRO NO DOCUMENTO.
+ * Usado para operações como reordenar ou editar um link existente.
+ * @param pageSlug - O slug da página a ser atualizada.
+ * @param updatedLinks - O array de links completo e atualizado.
  */
 export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData[]): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
+    // Substitui completamente o array 'links' pelo novo array fornecido
     await updateDoc(pageDocRef, {
       links: updatedLinks
     });
@@ -102,6 +119,9 @@ export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData
 
 /**
  * Busca os dados de uma página pública diretamente pelo seu slug.
+ * Usado pela página pública [slug].
+ * @param slug - O identificador (ID do documento) da página na coleção 'pages'.
+ * @returns Os dados completos da página ou null se não for encontrada.
  */
 export const getPageDataBySlug = async (slug: string): Promise<DocumentData | null> => {
   try {
@@ -111,7 +131,7 @@ export const getPageDataBySlug = async (slug: string): Promise<DocumentData | nu
     if (pageDocSnap.exists()) {
       return pageDocSnap.data();
     } else {
-      console.log("Nenhum documento de página encontrado para este slug!");
+      console.log(`Nenhum documento de página encontrado para o slug: ${slug}`);
       return null;
     }
   } catch (error) {
@@ -121,15 +141,15 @@ export const getPageDataBySlug = async (slug: string): Promise<DocumentData | nu
 };
 
 /**
- * ATUALIZA O TEMA DE UMA PÁGINA.
+ * ATUALIZA APENAS O CAMPO 'theme' DE UMA PÁGINA.
  * @param pageSlug - O slug da página a ser atualizada.
- * @param theme - O nome do tema (ex: 'light', 'dark').
+ * @param theme - O nome do novo tema (ex: 'light', 'dark', 'ocean').
  */
 export const updatePageTheme = async (pageSlug: string, theme: string): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
     await updateDoc(pageDocRef, {
-      theme: theme
+      theme: theme // Atualiza somente o campo 'theme'
     });
   } catch (error) {
     console.error("Erro ao atualizar o tema:", error);
