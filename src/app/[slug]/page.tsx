@@ -2,7 +2,8 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { getPageDataBySlug, PageData, LinkData } from "@/lib/pageService"; // Import tipos de pageService
+// Import 'LinkData' removido daqui, pois não estava sendo usado diretamente neste arquivo.
+import { getPageDataBySlug, PageData } from "@/lib/pageService";
 import { notFound } from "next/navigation";
 import Image from 'next/image';
 // Importa ícones que vamos usar

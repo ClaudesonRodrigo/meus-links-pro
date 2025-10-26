@@ -211,6 +211,7 @@ export const findUserByEmail = async (email: string): Promise<(UserData & { uid:
   } catch (error) {
     console.error("Erro ao buscar usuário por email:", error);
     // Verificar se é erro de índice faltando
+    // @ts-ignore // Adicionado para ignorar o erro de tipo 'any' na linha abaixo
     if ((error as any).code === 'failed-precondition') {
       console.error("ERRO: Índice do Firestore provavelmente faltando para a coleção 'users' no campo 'email'. Verifique o console do Firebase para criar o índice.");
       alert("Erro ao buscar: Índice do banco de dados necessário. Verifique o console para mais detalhes.");
@@ -238,6 +239,7 @@ export const updateUserPlan = async (targetUserId: string, newPlan: 'free' | 'pr
   } catch (error) {
     console.error(`Erro ao atualizar plano do usuário ${targetUserId}:`, error);
     // Tenta dar uma mensagem de erro mais útil baseada no código do erro
+    // @ts-ignore // Adicionado para ignorar o erro de tipo 'any' na linha abaixo
     if ((error as any).code === 'permission-denied') {
         throw new Error("Permissão negada. Verifique as regras de segurança do Firestore e se você está logado como admin.");
     }

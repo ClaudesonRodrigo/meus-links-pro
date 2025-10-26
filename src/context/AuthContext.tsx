@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, DocumentData } from 'firebase/firestore'; // DocumentData não é mais usado diretamente, mas pode manter se planeja usar
+// 'DocumentData' removido da importação
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebaseClient';
 
 // ATUALIZAR A TIPAGEM UserData
