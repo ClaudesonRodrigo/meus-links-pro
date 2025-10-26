@@ -3,19 +3,20 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, DocumentData } from 'firebase/firestore'; // IMPORTAR FUNÇÕES DO FIRESTORE
-import { auth, db } from '@/lib/firebaseClient'; // IMPORTAR 'db'
+import { doc, getDoc, DocumentData } from 'firebase/firestore'; // DocumentData não é mais usado diretamente, mas pode manter se planeja usar
+import { auth, db } from '@/lib/firebaseClient';
 
-// DEFINIR UM TIPO PARA OS NOSSOS DADOS DO USUÁRIO NO FIRESTORE
+// ATUALIZAR A TIPAGEM UserData
 type UserData = {
   plan: string;
   pageSlug: string;
   displayName?: string;
   email?: string;
+  role?: string; // <-- ADICIONADO CAMPO ROLE (OPCIONAL)
   // Adicione qualquer outro campo que você tenha na coleção 'users'
 };
 
-// ATUALIZAR O TIPO DO CONTEXTO
+// Sem alterações na AuthContextType
 type AuthContextType = {
   user: User | null; // O objeto User do Firebase Auth
   userData: UserData | null; // Nossos dados adicionais do Firestore
@@ -32,7 +33,7 @@ const AuthContext = createContext<AuthContextType>({
 // Componente Provedor
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null); // NOVO ESTADO
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,13 +44,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Usuário está logado (Firebase Auth confirmou)
         setUser(userAuth);
 
-        // BUSCAR DADOS ADICIONAIS NO FIRESTORE
+        // BUSCAR DADOS ADICIONAIS NO FIRESTORE (INCLUINDO 'role')
         const userDocRef = doc(db, "users", userAuth.uid);
         try {
           const docSnap = await getDoc(userDocRef);
           if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserData); // Armazena os dados do Firestore
-            // console.log("Dados do usuário carregados:", docSnap.data()); // Log opcional
+            // O tipo UserData já inclui 'role?', então o casting funciona
+            setUserData(docSnap.data() as UserData);
+            // console.log("Dados do usuário (incluindo role):", docSnap.data()); // Log opcional
           } else {
             console.warn("Documento do usuário não encontrado no Firestore para UID:", userAuth.uid);
             setUserData(null); // Garante que não há dados antigos
