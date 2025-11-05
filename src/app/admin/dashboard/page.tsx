@@ -324,7 +324,7 @@ export default function DashboardPage() {
       <nav className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex-shrink-0 flex items-center">
+            <div className="shrink-0 flex items-center">
               <h1 className="text-xl font-bold text-gray-800">Meu Painel {isAdmin && <span className="text-red-600 text-sm">(Admin)</span>}</h1>
             </div>
             <div className="flex items-center">

@@ -148,7 +148,7 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
                 // Delay na animação para efeito cascata
                 style={{ transitionDelay: `${index * 100 + 300}ms` }}
               >
-                {IconComponent && <IconComponent size={20} className="flex-shrink-0" />}
+                {IconComponent && <IconComponent size={20} className="shrink-0" />}
                 <span className="truncate">{link.title}</span> {/* Truncate para títulos longos */}
               </a>
             );
