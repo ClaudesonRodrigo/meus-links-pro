@@ -13,6 +13,7 @@ export type LinkData = {
   type: string; // Mantido para futura customização, se necessário
   order: number;
   icon?: string; // NOVO CAMPO para nome do ícone (ex: 'github', 'instagram')
+  clicks?: number; // NOVO CAMPO: Contador de cliques
 };
 
 // Tipo para os dados da página inteira (com campo 'theme' opcional)
@@ -138,6 +139,44 @@ export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData
   } catch (error) {
     console.error("Erro ao atualizar os links:", error);
     throw new Error("Não foi possível atualizar os links.");
+  }
+};
+
+/**
+ * Incrementa o contador de cliques de um link específico.
+ * @param pageSlug - O slug da página.
+ * @param linkUrl - A URL do link que foi clicado.
+ */
+export const incrementLinkClick = async (pageSlug: string, linkUrl: string): Promise<void> => {
+  try {
+    const pageDocRef = doc(db, "pages", pageSlug);
+    const pageDocSnap = await getDoc(pageDocRef);
+
+    if (pageDocSnap.exists()) {
+      const pageData = pageDocSnap.data() as PageData;
+      const links = pageData.links || [];
+
+      // Encontra o índice do link clicado
+      const linkIndex = links.findIndex(l => l.url === linkUrl);
+
+      if (linkIndex !== -1) {
+        const updatedLinks = [...links];
+        const currentClicks = updatedLinks[linkIndex].clicks || 0;
+
+        // Atualiza o contador
+        updatedLinks[linkIndex] = {
+          ...updatedLinks[linkIndex],
+          clicks: currentClicks + 1
+        };
+
+        // Salva o array atualizado no Firestore
+        await updateDoc(pageDocRef, { links: updatedLinks });
+        // console.log(`Clique incrementado para ${linkUrl}. Total: ${currentClicks + 1}`);
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao incrementar clique:", error);
+    // Não lançamos erro para não atrapalhar a navegação do usuário
   }
 };
 

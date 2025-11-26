@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { getPageDataBySlug, PageData } from "@/lib/pageService";
+import { getPageDataBySlug, PageData, LinkData, incrementLinkClick } from "@/lib/pageService";
 import { notFound } from "next/navigation";
 import Image from 'next/image';
 // IMPORTANTE: Importando o componente Link do Next.js
@@ -65,6 +65,11 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
     setTimeout(() => setIsLoaded(true), 100);
   }, [pageData]);
 
+  const handleLinkClick = (link: LinkData) => {
+    // Chama a função de incremento sem await para não travar a navegação
+    incrementLinkClick(resolvedParams.slug, link.url);
+  };
+
   if (!pageData) return <div className="flex justify-center items-center min-h-screen"><p className="animate-pulse">Carregando...</p></div>;
 
   // Lógica para identificar visualmente se é Premium baseado no tema ou se tem imagem de fundo
@@ -118,6 +123,7 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => handleLinkClick(link)}
                 className={`flex items-center p-4 rounded-xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg border border-white/10
                   bg-theme-button-bg text-theme-button-text hover:bg-theme-button-hover-bg
                   ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}

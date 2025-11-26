@@ -10,7 +10,7 @@ import {
   updatePageTheme, updatePageBackground, PageData, LinkData, UserData,
   findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch } from 'react-icons/fa';
+import { FaLock, FaSearch, FaChartBar } from 'react-icons/fa';
 
 // Definição dos temas disponíveis
 const themes = [
@@ -374,10 +374,10 @@ export default function DashboardPage() {
                       onClick={() => handleThemeChange(theme.name)}
                       disabled={isDisabledByPlan}
                       className={`relative p-4 rounded-lg border-2 text-center transition-all duration-150 ease-in-out focus:outline-none ${isActive
-                          ? 'border-blue-600 ring-2 ring-blue-300'
-                          : isDisabledByPlan
-                            ? 'border-gray-200 opacity-50 cursor-not-allowed'
-                            : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-blue-600 ring-2 ring-blue-300'
+                        : isDisabledByPlan
+                          ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                          : 'border-gray-300 hover:border-gray-400'
                         }`}
                       aria-pressed={isActive}
                       aria-disabled={isDisabledByPlan}
@@ -511,6 +511,11 @@ export default function DashboardPage() {
                               <p className="font-semibold text-gray-800 truncate">{link.title}</p>
                               <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-all">{link.url}</a>
                               {link.icon && <p className="text-xs text-gray-500 mt-1">Ícone: {link.icon}</p>}
+
+                              <div className="flex items-center text-xs text-gray-600 mt-1 gap-1" title="Total de cliques">
+                                <FaChartBar className="text-blue-500" />
+                                <span className="font-medium">{link.clicks || 0} cliques</span>
+                              </div>
                             </div>
                             <div className='flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2 w-full sm:w-auto mt-2 sm:mt-0'>
                               <button onClick={() => handleEditClick(link, index)} className="w-full sm:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold py-1 px-3 rounded-md text-sm">Editar</button>
@@ -555,10 +560,10 @@ export default function DashboardPage() {
 
               {adminMessage && (
                 <p className={`text-sm mb-4 p-3 rounded-md ${adminMessage.includes('sucesso')
-                    ? 'bg-green-100 text-green-700'
-                    : adminMessage.includes('não encontrado')
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-red-100 text-red-700'
+                  ? 'bg-green-100 text-green-700'
+                  : adminMessage.includes('não encontrado')
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
                   }`}
                 >
                   {adminMessage}
