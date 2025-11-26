@@ -2,158 +2,142 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-// Import 'LinkData' removido daqui, pois não estava sendo usado diretamente neste arquivo.
 import { getPageDataBySlug, PageData } from "@/lib/pageService";
 import { notFound } from "next/navigation";
 import Image from 'next/image';
-// Importa ícones que vamos usar
-import { FaGithub, FaInstagram, FaLinkedin, FaGlobe, FaTwitter, FaFacebook, FaYoutube, FaTiktok, FaWhatsapp, FaEnvelope, FaLink } from 'react-icons/fa';
-// Para o ícone X (Twitter), podemos usar a versão mais recente da react-icons/fa6 se preferir:
-// import { FaSquareXTwitter } from 'react-icons/fa6';
+import { FaGithub, FaInstagram, FaLinkedin, FaGlobe, FaTwitter, FaFacebook, FaYoutube, FaTiktok, FaWhatsapp, FaEnvelope, FaLink, FaCheckCircle } from 'react-icons/fa';
 
-// Mapeamento de nomes de ícones para componentes (lowercase para consistência)
 const iconMap: { [key: string]: React.ElementType } = {
   github: FaGithub,
   instagram: FaInstagram,
   linkedin: FaLinkedin,
-  globe: FaGlobe, // Ícone genérico para site
-  website: FaGlobe, // Alias para 'globe'
-  twitter: FaTwitter, // Mantendo FaTwitter por enquanto, pode trocar por FaSquareXTwitter
-  // x: FaSquareXTwitter,     // Alias se usar o ícone X
+  globe: FaGlobe,
+  website: FaGlobe,
+  twitter: FaTwitter,
   facebook: FaFacebook,
   youtube: FaYoutube,
   tiktok: FaTiktok,
   whatsapp: FaWhatsapp,
   email: FaEnvelope,
-  link: FaLink, // Ícone genérico de link
-  // Adicione mais mapeamentos conforme necessário (lembre-se de importar o ícone)
+  link: FaLink,
 };
 
+// Estende o tipo PageData para incluir a imagem de fundo
+interface ExtendedPageData extends PageData {
+  backgroundImage?: string; // URL da imagem de fundo personalizada
+}
+
 export default function UserPage({ params }: { params: Promise<{ slug: string }> }) {
-  // Resolve a promise dos params usando o hook 'use'
   const resolvedParams = use(params);
+  const [pageData, setPageData] = useState<ExtendedPageData | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const [pageData, setPageData] = useState<PageData | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false); // Estado para controlar animação de entrada
-
-  // Efeito para buscar dados e aplicar/limpar classe de tema no HTML
   useEffect(() => {
-    let isMounted = true; // Flag para evitar race conditions
-    let currentThemeClass = ''; // Para guardar a classe e remover na limpeza
-
+    let isMounted = true;
     const fetchData = async () => {
-      // console.log("Buscando dados para slug:", resolvedParams.slug);
-      const data = await getPageDataBySlug(resolvedParams.slug) as PageData | null;
-      if (!isMounted) return; // Se desmontou enquanto buscava, não faz nada
+      const data = await getPageDataBySlug(resolvedParams.slug) as ExtendedPageData | null;
+      if (!isMounted) return;
 
       if (!data) {
-        // console.error("Página não encontrada para slug:", resolvedParams.slug);
-        notFound(); // Redireciona para 404
+        notFound();
       } else {
-        // console.log("Dados recebidos:", data);
-        setPageData(data); // Atualiza estado com os dados da página
+        setPageData(data);
+        // Limpa classes antigas
+        document.documentElement.className = "";
 
-        // Lógica para aplicar o tema
-        const themeName = data.theme || 'light'; // Padrão 'light' se não definido
-        currentThemeClass = `theme-${themeName}`;
-        // console.log("Aplicando tema:", currentThemeClass);
+        const theme = data.theme || 'light';
 
-        // Limpa classes de tema anteriores antes de adicionar a nova na tag <html>
-        document.documentElement.className = document.documentElement.className
-          .replace(/theme-\w+/g, '') // Remove classes theme-* existentes
-          .trim();
-
-        if (themeName !== 'light') { // Só adiciona classe se não for o tema padrão
-             document.documentElement.classList.add(currentThemeClass);
+        // Se tiver imagem personalizada, forçamos o tema 'custom-image'
+        if (data.backgroundImage) {
+          document.documentElement.classList.add('theme-custom-image');
+        } else {
+          document.documentElement.classList.add(`theme-${theme}`);
         }
       }
     };
-
     fetchData();
+    return () => { isMounted = false; document.documentElement.className = ""; };
+  }, [resolvedParams.slug]);
 
-    // Função de limpeza executada quando o componente desmonta ou o slug muda
-    return () => {
-      isMounted = false; // Marca como desmontado
-      // console.log("Limpando tema:", currentThemeClass);
-      // Remove a classe de tema atual do HTML para não afetar outras páginas
-      if (currentThemeClass && currentThemeClass !== 'theme-light') {
-        document.documentElement.classList.remove(currentThemeClass);
-      }
-      // Garante limpeza total de classes de tema
-      document.documentElement.className = document.documentElement.className.replace(/theme-\w+/g, '').trim();
-    };
-  }, [resolvedParams.slug]); // Re-executa se o slug na URL mudar
-
-  // Efeito para controlar a animação de entrada
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pageData) {
-        setIsLoaded(true); // Ativa a animação após dados carregarem e um pequeno delay
-      }
-    }, 100);
-    return () => clearTimeout(timer); // Limpa o timer se o componente desmontar
-  }, [pageData]); // Depende do pageData para saber quando começar
+    setTimeout(() => setIsLoaded(true), 100);
+  }, [pageData]);
 
-  // Tela de carregamento enquanto pageData é null
-  if (!pageData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-xl animate-pulse">Carregando...</p> {/* Animação simples de loading */}
-      </div>
-    );
-  }
+  if (!pageData) return <div className="flex justify-center items-center min-h-screen"><p className="animate-pulse">Carregando...</p></div>;
 
-  // Renderização da página principal
+  // Lógica para identificar visualmente se é Premium baseado no tema ou se tem imagem de fundo
+  const isProTheme = ['realtor', 'restaurant', 'mechanic', 'influencer', 'ocean', 'sunset', 'forest', 'bubblegum'].includes(pageData.theme || '') || !!pageData.backgroundImage;
+
   return (
-    // As classes de fundo e texto usam variáveis CSS definidas em globals.css
-    // Adiciona classe de gradiente específica se for o tema correspondente
-    <div className={`min-h-screen font-sans transition-colors duration-300 ${
-        pageData.theme === 'ocean' ? 'bg-gradient-ocean text-theme-text' :
-        pageData.theme === 'sunset' ? 'bg-gradient-sunset text-theme-text' :
-        'bg-theme-bg text-theme-text' // Aplica fundo/texto base para outros temas
-      }`}
-     >
-      <main className="container mx-auto max-w-2xl px-4 py-8 md:py-16">
-        {/* Seção do Perfil (Imagem, Título, Bio) com animação */}
-        <div className={`flex flex-col items-center text-center mb-8 transition-all duration-700 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+    <div
+      className="min-h-screen font-sans transition-all duration-300 text-theme-text bg-theme-bg"
+      style={pageData.backgroundImage ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url(${pageData.backgroundImage})` } : {}}
+    >
+      <main className="container mx-auto max-w-xl px-4 py-12 md:py-20">
+
+        <div className={`flex flex-col items-center text-center mb-10 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {pageData.profileImageUrl && (
-            <Image
-              src={pageData.profileImageUrl}
-              alt={`Foto de perfil de ${pageData.title}`}
-              width={128} height={128}
-              // Borda usa variável CSS
-              className="rounded-full mb-4 border-4 border-theme-image-border shadow-lg object-cover"
-              priority // Otimiza carregamento da imagem principal
-            />
+            <div className="relative group">
+              <Image
+                src={pageData.profileImageUrl}
+                alt={pageData.title}
+                width={120} height={120}
+                className="rounded-full border-4 border-theme-image-border shadow-2xl object-cover w-32 h-32"
+                priority
+              />
+              {/* Selo Pro */}
+              {isProTheme && (
+                <div className="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1.5 border-2 border-white shadow-sm" title="Verificado / Pro">
+                  <FaCheckCircle size={14} />
+                </div>
+              )}
+            </div>
           )}
-          {/* Título e Bio usam variáveis CSS de texto */}
-          <h1 className="text-3xl font-bold text-theme-text">{pageData.title || 'Nome do Usuário'}</h1>
-          <p className="mt-2 text-theme-text-muted">{pageData.bio || 'Edite sua bio no painel.'}</p>
+
+          <div className="flex items-center gap-2 justify-center mt-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-theme-text drop-shadow-md">
+              {pageData.title}
+            </h1>
+            {isProTheme && <FaCheckCircle className="text-blue-500 ml-1" size={20} title="Pro" />}
+          </div>
+
+          <p className="mt-2 text-sm md:text-base text-theme-text-muted max-w-xs mx-auto leading-relaxed opacity-90">
+            {pageData.bio}
+          </p>
         </div>
 
-        {/* Seção dos Links com animação em cascata */}
-        <section className="mt-8 space-y-4">
+        <section className="space-y-4">
           {pageData.links?.map((link, index) => {
-            // Pega o componente do ícone do mapeamento (lowercase) ou usa um ícone padrão
-            const iconKey = link.icon ? link.icon.toLowerCase() : undefined;
-            const IconComponent = iconKey ? (iconMap[iconKey] || FaLink) : null; // Usa FaLink como fallback
+            const iconKey = link.icon?.toLowerCase();
+            const IconComponent = iconKey ? (iconMap[iconKey] || FaLink) : null;
             return (
               <a
                 key={index}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                // Botão usa variáveis CSS para cores e hover
-                className={`flex items-center justify-center gap-3 w-full text-center bg-theme-button-bg hover:bg-theme-button-hover-bg text-theme-button-text font-semibold py-4 px-6 rounded-lg shadow-md transition-all duration-500 ease-out transform hover:scale-[1.03] hover:shadow-xl active:scale-[0.98] ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}
-                // Delay na animação para efeito cascata
-                style={{ transitionDelay: `${index * 100 + 300}ms` }}
+                className={`flex items-center p-4 rounded-xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg border border-white/10
+                  bg-theme-button-bg text-theme-button-text hover:bg-theme-button-hover-bg
+                  ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
+                style={{ transitionDelay: `${index * 100}ms`, backdropFilter: 'blur(5px)' }}
               >
-                {IconComponent && <IconComponent size={20} className="shrink-0" />}
-                <span className="truncate">{link.title}</span> {/* Truncate para títulos longos */}
+                {IconComponent && (
+                  <span className="mr-4 text-xl opacity-80">
+                    <IconComponent />
+                  </span>
+                )}
+                <span className="font-medium flex-grow text-center pr-6">{link.title}</span>
               </a>
             );
           })}
         </section>
+
+        <footer className="mt-16 text-center">
+          <a href="/" className="inline-block px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm text-xs text-white/70 hover:bg-black/40 transition-colors">
+            Criado com <strong>Meus Links Pro</strong>
+          </a>
+        </footer>
+
       </main>
     </div>
   );

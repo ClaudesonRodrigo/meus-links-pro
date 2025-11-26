@@ -2,7 +2,7 @@
 
 import {
   doc, getDoc, updateDoc, arrayUnion, arrayRemove, DocumentData,
-  collection, query, where, getDocs // Adicionar imports Firestore necessários
+  collection, query, where, getDocs
 } from "firebase/firestore";
 import { db } from "./firebaseClient";
 
@@ -20,6 +20,7 @@ export type PageData = {
   title: string;
   bio: string;
   profileImageUrl?: string; // Tornar opcional caso o usuário não tenha foto
+  backgroundImage?: string; // NOVO CAMPO: URL da imagem de fundo personalizada
   links: LinkData[];
   theme?: string; // NOVO CAMPO para nome do tema (ex: 'dark', 'ocean')
   userId: string; // Adicionado para garantir que o tipo esteja completo e para regras de segurança
@@ -65,8 +66,8 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
         console.log(`Fallback bem-sucedido: encontrado /pages/${pageDoc.id} para userId ${userId}`);
         return { slug: pageDoc.id, data: pageDoc.data() };
       } else {
-         console.error(`Fallback falhou: Nenhum documento em /pages encontrado para userId ${userId}.`);
-         return null; // Retorna null se nem o fallback funcionar
+        console.error(`Fallback falhou: Nenhum documento em /pages encontrado para userId ${userId}.`);
+        return null; // Retorna null se nem o fallback funcionar
       }
     }
 
@@ -179,6 +180,23 @@ export const updatePageTheme = async (pageSlug: string, theme: string): Promise<
   }
 };
 
+/**
+ * ATUALIZA A IMAGEM DE FUNDO DE UMA PÁGINA.
+ * @param pageSlug - O slug da página a ser atualizada.
+ * @param imageUrl - A URL da imagem de fundo (ou string vazia para remover).
+ */
+export const updatePageBackground = async (pageSlug: string, imageUrl: string): Promise<void> => {
+  try {
+    const pageDocRef = doc(db, "pages", pageSlug);
+    await updateDoc(pageDocRef, {
+      backgroundImage: imageUrl
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar a imagem de fundo:", error);
+    throw new Error("Não foi possível atualizar a imagem de fundo.");
+  }
+};
+
 
 // --- NOVAS FUNÇÕES DE ADMIN ---
 
@@ -202,7 +220,7 @@ export const findUserByEmail = async (email: string): Promise<(UserData & { uid:
 
     // Pega o primeiro resultado (emails devem ser únicos, mas a query pode retornar mais se houver erro)
     if (querySnapshot.docs.length > 1) {
-       console.warn(`Múltiplos usuários encontrados com o email ${email}. Retornando o primeiro.`);
+      console.warn(`Múltiplos usuários encontrados com o email ${email}. Retornando o primeiro.`);
     }
     const userDoc = querySnapshot.docs[0];
     // Retorna um objeto combinado com o UID e os dados do documento
@@ -241,7 +259,7 @@ export const updateUserPlan = async (targetUserId: string, newPlan: 'free' | 'pr
     // Tenta dar uma mensagem de erro mais útil baseada no código do erro
     // @ts-expect-error - O 'error' pego no catch é 'unknown', mas sabemos que erros do Firebase têm a propriedade 'code'.
     if (error.code === 'permission-denied') {
-        throw new Error("Permissão negada. Verifique as regras de segurança do Firestore e se você está logado como admin.");
+      throw new Error("Permissão negada. Verifique as regras de segurança do Firestore e se você está logado como admin.");
     }
     throw new Error("Falha ao atualizar o plano do usuário."); // Re-lança para tratamento no UI
   }
