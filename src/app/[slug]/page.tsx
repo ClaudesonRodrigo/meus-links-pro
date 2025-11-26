@@ -5,6 +5,8 @@ import { useEffect, useState, use } from 'react';
 import { getPageDataBySlug, PageData } from "@/lib/pageService";
 import { notFound } from "next/navigation";
 import Image from 'next/image';
+// IMPORTANTE: Importando o componente Link do Next.js
+import Link from 'next/link';
 import { FaGithub, FaInstagram, FaLinkedin, FaGlobe, FaTwitter, FaFacebook, FaYoutube, FaTiktok, FaWhatsapp, FaEnvelope, FaLink, FaCheckCircle } from 'react-icons/fa';
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -66,7 +68,7 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
   if (!pageData) return <div className="flex justify-center items-center min-h-screen"><p className="animate-pulse">Carregando...</p></div>;
 
   // Lógica para identificar visualmente se é Premium baseado no tema ou se tem imagem de fundo
-  const isProTheme = ['realtor', 'restaurant', 'mechanic', 'influencer', 'ocean', 'sunset', 'forest', 'bubblegum'].includes(pageData.theme || '') || !!pageData.backgroundImage;
+  const isProTheme = ['realtor', 'restaurant', 'mechanic', 'influencer', 'ocean', 'sunset', 'forest', 'bubblegum', 'developer'].includes(pageData.theme || '') || !!pageData.backgroundImage;
 
   return (
     <div
@@ -133,9 +135,10 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
         </section>
 
         <footer className="mt-16 text-center">
-          <a href="/" className="inline-block px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm text-xs text-white/70 hover:bg-black/40 transition-colors">
+          {/* CORREÇÃO AQUI: Trocamos <a> por <Link> */}
+          <Link href="/" className="inline-block px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm text-xs text-white/70 hover:bg-black/40 transition-colors">
             Criado com <strong>Meus Links Pro</strong>
-          </a>
+          </Link>
         </footer>
 
       </main>
