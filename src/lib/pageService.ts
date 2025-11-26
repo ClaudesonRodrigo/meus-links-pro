@@ -236,6 +236,23 @@ export const updatePageBackground = async (pageSlug: string, imageUrl: string): 
   }
 };
 
+/**
+ * ATUALIZA A FOTO DE PERFIL DE UMA PÁGINA.
+ * @param pageSlug - O slug da página a ser atualizada.
+ * @param imageUrl - A URL da nova foto de perfil.
+ */
+export const updateProfileImage = async (pageSlug: string, imageUrl: string): Promise<void> => {
+  try {
+    const pageDocRef = doc(db, "pages", pageSlug);
+    await updateDoc(pageDocRef, {
+      profileImageUrl: imageUrl
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar a foto de perfil:", error);
+    throw new Error("Não foi possível atualizar a foto de perfil.");
+  }
+};
+
 
 // --- NOVAS FUNÇÕES DE ADMIN ---
 

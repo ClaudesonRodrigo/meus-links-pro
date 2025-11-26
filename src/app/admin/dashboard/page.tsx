@@ -7,10 +7,11 @@ import { useAuth } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/authService';
 import {
   getPageDataForUser, addLinkToPage, deleteLinkFromPage, updateLinksOnPage,
-  updatePageTheme, updatePageBackground, PageData, LinkData, UserData,
+  updatePageTheme, updatePageBackground, updateProfileImage, PageData, LinkData, UserData,
   findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch, FaChartBar } from 'react-icons/fa';
+import { FaLock, FaSearch, FaChartBar, FaCamera } from 'react-icons/fa';
+import Image from 'next/image';
 
 // Definição dos temas disponíveis
 const themes = [
@@ -48,6 +49,10 @@ export default function DashboardPage() {
 
   // Estado para a imagem de fundo personalizada
   const [customBgUrl, setCustomBgUrl] = useState('');
+
+  // Estados para upload
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingBg, setIsUploadingBg] = useState(false);
 
   const isProPlan = userData?.plan === 'pro';
 
@@ -236,23 +241,73 @@ export default function DashboardPage() {
     }
   };
 
-  // Função para salvar a imagem de fundo
-  const handleSaveBackground = async () => {
+  // Função genérica de upload para o Cloudinary
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'links-page-pro'); // Preset configurado no Cloudinary
+    formData.append('cloud_name', 'dhzzvc3vl'); // Cloud Name
+
+    try {
+      const response = await fetch('https://api.cloudinary.com/v1_1/dhzzvc3vl/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Erro no upload Cloudinary:", errorData);
+        throw new Error('Falha no upload da imagem.');
+      }
+
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error);
+      throw error;
+    }
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pageSlug) return;
+
+    setIsUploadingProfile(true);
+    try {
+      const imageUrl = await uploadToCloudinary(file);
+      await updateProfileImage(pageSlug, imageUrl);
+      setPageData(prev => prev ? { ...prev, profileImageUrl: imageUrl } : null);
+      alert("Foto de perfil atualizada com sucesso!");
+    } catch (error) {
+      alert("Erro ao atualizar foto de perfil.");
+    } finally {
+      setIsUploadingProfile(false);
+    }
+  };
+
+  const handleBackgroundImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pageSlug) return;
+
     if (!isProPlan) {
       alert("Imagem de fundo personalizada é um recurso Pro!");
       return;
     }
-    if (!pageSlug) return;
 
+    setIsUploadingBg(true);
     try {
-      await updatePageBackground(pageSlug, customBgUrl);
-      setPageData(prevData => prevData ? { ...prevData, backgroundImage: customBgUrl } : null);
-      alert("Imagem de fundo atualizada!");
+      const imageUrl = await uploadToCloudinary(file);
+      await updatePageBackground(pageSlug, imageUrl);
+      setCustomBgUrl(imageUrl);
+      setPageData(prev => prev ? { ...prev, backgroundImage: imageUrl } : null);
+      alert("Imagem de fundo atualizada com sucesso!");
     } catch (error) {
-      console.error("Erro ao salvar imagem de fundo:", error);
-      alert("Erro ao salvar imagem.");
+      alert("Erro ao atualizar imagem de fundo.");
+    } finally {
+      setIsUploadingBg(false);
     }
   };
+
 
   const handleSearchUser = async (e: FormEvent) => {
     e.preventDefault();
@@ -326,15 +381,57 @@ export default function DashboardPage() {
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
 
         <div className="bg-white p-6 rounded-lg shadow mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Bem-vindo, {pageData?.title || userData?.displayName || user.displayName || 'Usuário'}!
-            </h2>
-            <span className={`text-sm font-medium px-3 py-1 rounded-full ${isProPlan ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-              }`}>
-              Plano: {isProPlan ? 'Pro' : 'Gratuito'}
-            </span>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Bem-vindo, {pageData?.title || userData?.displayName || user.displayName || 'Usuário'}!
+              </h2>
+              <span className={`text-sm font-medium px-3 py-1 rounded-full mt-2 inline-block ${isProPlan ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                Plano: {isProPlan ? 'Pro' : 'Gratuito'}
+              </span>
+            </div>
+
+            {/* Seção de Foto de Perfil */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                {pageData?.profileImageUrl ? (
+                  <Image
+                    src={pageData.profileImageUrl}
+                    alt="Foto de Perfil"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
+                    <FaCamera size={24} />
+                  </div>
+                )}
+                <label htmlFor="profile-upload" className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-md">
+                  <FaCamera size={14} />
+                  <input
+                    id="profile-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfileImageUpload}
+                    disabled={isUploadingProfile}
+                  />
+                </label>
+                {isUploadingProfile && (
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  </div>
+                )}
+              </div>
+              <div className="text-sm text-gray-500">
+                <p>Alterar foto</p>
+                <p className="text-xs">(Max 5MB)</p>
+              </div>
+            </div>
           </div>
+
           <p className="text-gray-700 mb-2">
             Gerencie sua página de links abaixo.
           </p>
@@ -398,24 +495,35 @@ export default function DashboardPage() {
                   Imagem de Fundo Personalizada
                   {!isProPlan && <FaLock className="text-gray-400 w-4 h-4" />}
                 </h4>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="url"
-                    placeholder="Cole o link da sua imagem aqui (https://...)"
-                    className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value={customBgUrl}
-                    onChange={(e) => setCustomBgUrl(e.target.value)}
-                    disabled={!isProPlan}
-                  />
-                  <button
-                    onClick={handleSaveBackground}
-                    disabled={!isProPlan}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Salvar Imagem
-                  </button>
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  <div className="flex-grow w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Upload de Imagem
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBackgroundImageUpload}
+                      disabled={!isProPlan || isUploadingBg}
+                      className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-indigo-50 file:text-indigo-700
+                          hover:file:bg-indigo-100
+                          disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    {isUploadingBg && <p className="text-xs text-indigo-600 mt-1">Enviando imagem...</p>}
+                  </div>
+
+                  {/* Preview ou Input de URL (opcional, mantido apenas o preview se existir) */}
+                  {customBgUrl && (
+                    <div className="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shrink-0">
+                      <Image src={customBgUrl} alt="Background Preview" fill className="object-cover" />
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Cole a URL direta de uma imagem (ex: Google Images, Unsplash).</p>
+                <p className="text-xs text-gray-500 mt-2">Formatos aceitos: JPG, PNG, WEBP.</p>
               </div>
 
               {!isProPlan && (
