@@ -347,8 +347,8 @@ export default function DashboardPage() {
             <div className="bg-white p-6 rounded-lg shadow mb-8">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Sua Página está no Ar!</h3>
               <p className="text-gray-600 mb-4">Compartilhe este link com seu público:</p>
-              <div className="flex flex-col sm:flex-row items-center gap-2 p-3 bg-gray-100 rounded-md">
-                <span className="text-blue-600 truncate font-mono text-sm">
+              <div className="flex flex-col sm:flex-row items-center gap-2 p-3 bg-gray-100 rounded-md w-full">
+                <span className="text-blue-600 truncate font-mono text-sm w-full block">
                   {`${typeof window !== 'undefined' ? window.location.origin : ''}/${pageSlug}`}
                 </span>
                 <button
