@@ -5,9 +5,9 @@ import { useEffect, useState, use } from 'react';
 import { getPageDataBySlug, PageData, LinkData, incrementLinkClick } from "@/lib/pageService";
 import { notFound } from "next/navigation";
 import Image from 'next/image';
-// IMPORTANTE: Importando o componente Link do Next.js
 import Link from 'next/link';
 import { FaGithub, FaInstagram, FaLinkedin, FaGlobe, FaTwitter, FaFacebook, FaYoutube, FaTiktok, FaWhatsapp, FaEnvelope, FaLink, FaCheckCircle } from 'react-icons/fa';
+import { motion, Variants } from 'framer-motion';
 
 const iconMap: { [key: string]: React.ElementType } = {
   github: FaGithub,
@@ -75,6 +75,32 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
   // Lógica para identificar visualmente se é Premium baseado no tema ou se tem imagem de fundo
   const isProTheme = ['realtor', 'restaurant', 'mechanic', 'influencer', 'ocean', 'sunset', 'forest', 'bubblegum', 'developer'].includes(pageData.theme || '') || !!pageData.backgroundImage;
 
+  // Variantes de animação para o container (lista de links)
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1, // Atraso entre cada filho
+        delayChildren: 0.3,   // Atraso inicial antes de começar
+      }
+    }
+  };
+
+  // Variantes de animação para cada item (link)
+  const itemVariants: Variants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
   return (
     <div
       className="min-h-screen font-sans transition-all duration-300 text-theme-text bg-theme-bg"
@@ -113,21 +139,29 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
           </p>
         </div>
 
-        <section className="space-y-4">
+        {/* Container de Links com Animação Stagger */}
+        <motion.div
+          className="space-y-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {pageData.links?.map((link, index) => {
             const iconKey = link.icon?.toLowerCase();
             const IconComponent = iconKey ? (iconMap[iconKey] || FaLink) : null;
             return (
-              <a
+              <motion.a
                 key={index}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => handleLinkClick(link)}
-                className={`flex items-center p-4 rounded-xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg border border-white/10
-                  bg-theme-button-bg text-theme-button-text hover:bg-theme-button-hover-bg
-                  ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
-                style={{ transitionDelay: `${index * 100}ms`, backdropFilter: 'blur(5px)' }}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, translateY: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center p-4 rounded-xl border border-white/10
+                  bg-theme-button-bg text-theme-button-text hover:bg-theme-button-hover-bg shadow-sm hover:shadow-lg`}
+                style={{ backdropFilter: 'blur(5px)' }}
               >
                 {IconComponent && (
                   <span className="mr-4 text-xl opacity-80">
@@ -135,13 +169,12 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
                   </span>
                 )}
                 <span className="font-medium flex-grow text-center pr-6">{link.title}</span>
-              </a>
+              </motion.a>
             );
           })}
-        </section>
+        </motion.div>
 
         <footer className="mt-16 text-center">
-          {/* CORREÇÃO AQUI: Trocamos <a> por <Link> */}
           <Link href="/" className="inline-block px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm text-xs text-white/70 hover:bg-black/40 transition-colors">
             Criado com <strong>Meus Links Pro</strong>
           </Link>
