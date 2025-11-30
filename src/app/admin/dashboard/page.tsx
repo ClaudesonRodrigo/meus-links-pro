@@ -1,7 +1,7 @@
 // src/app/admin/dashboard/page.tsx
 'use client';
 
-import React, { useEffect, useState, FormEvent, useCallback } from 'react';
+import React, { useEffect, useState, FormEvent, useCallback, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/authService';
@@ -10,8 +10,15 @@ import {
   updatePageTheme, updatePageBackground, updateProfileImage, PageData, LinkData, UserData,
   findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch, FaChartBar, FaCamera } from 'react-icons/fa';
+import { FaLock, FaSearch, FaChartBar, FaCamera, FaCreditCard, FaWhatsapp, FaTimes, FaImage, FaUserCircle, FaUserCog, FaArrowLeft } from 'react-icons/fa';
+import axios from 'axios';
 import Image from 'next/image';
+
+// --- CONFIGURAÇÃO DO CLOUDINARY ---
+// Substitua pelos seus dados reais
+const CLOUDINARY_CLOUD_NAME = "dhzzvc3vl"; 
+const CLOUDINARY_UPLOAD_PRESET = "links-page-pro"; 
+// ----------------------------------
 
 // Definição dos temas disponíveis
 const themes = [
@@ -35,12 +42,21 @@ const themes = [
 export default function DashboardPage() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  
+  // Estado Principal
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [pageSlug, setPageSlug] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // --- MODO SUPER ADMIN (Gerenciar outro usuário) ---
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUserEmail, setTargetUserEmail] = useState<string | null>(null);
+  // --------------------------------------------------
+
+  // Estados de Links e UI
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkIcon, setNewLinkIcon] = useState('');
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingUrl, setEditingUrl] = useState('');
@@ -54,34 +70,37 @@ export default function DashboardPage() {
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
   const [isUploadingBg, setIsUploadingBg] = useState(false);
 
-  const isProPlan = userData?.plan === 'pro';
+  // Verifica se é Admin
+  const isAdmin = userData?.role === 'admin';
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  // Verifica se o plano é Pro (Se for Admin editando, libera tudo como se fosse Pro)
+  const isProPlan = targetUserId ? true : (userData?.plan === 'pro');
+
+  // Estados Admin (Busca)
   const [searchEmail, setSearchEmail] = useState('');
   const [foundUser, setFoundUser] = useState<(UserData & { uid: string }) | null>(null);
   const [adminMessage, setAdminMessage] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
+  // Estados para Checkout Asaas
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'Mensal' | 'Anual'>('Mensal');
+  const [cpfCnpj, setCpfCnpj] = useState('');
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+
   const whatsappNumber = "5579996337995";
 
-  const generateWhatsAppLink = (planType: 'Mensal' | 'Anual', price: string) => {
-    const message = `Olá! Gostaria de fazer o upgrade para o plano Pro ${planType} (R$${price}).`;
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-  };
+  // --- FUNÇÕES ---
 
-  useEffect(() => {
-    if (!loading && userData) {
-      setIsAdmin(userData.role === 'admin');
-    } else {
-      setIsAdmin(false);
-    }
-  }, [userData, loading, user]);
-
+  // Busca os dados da página (do usuário logado OU do usuário alvo se for admin)
   const fetchPageData = useCallback(async () => {
-    if (user) {
+    // Define qual ID vamos buscar: o alvo (se houver) ou o logado
+    const idToFetch = targetUserId || user?.uid;
+
+    if (idToFetch) {
       setIsLoadingData(true);
-      const result = await getPageDataForUser(user.uid);
+      const result = await getPageDataForUser(idToFetch);
       if (result) {
         const data = result.data as PageData;
         setPageData(data);
@@ -89,9 +108,11 @@ export default function DashboardPage() {
         // Carrega a imagem de fundo atual se existir
         if (data.backgroundImage) {
           setCustomBgUrl(data.backgroundImage);
+        } else {
+          setCustomBgUrl(''); // Limpa se não tiver
         }
       } else {
-        console.error("Não foi possível carregar os dados da página do usuário logado.");
+        console.error("Não foi possível carregar os dados da página do usuário.");
         setPageData(null);
         setPageSlug(null);
       }
@@ -99,13 +120,14 @@ export default function DashboardPage() {
     } else {
       setIsLoadingData(false);
     }
-  }, [user]);
+  }, [user, targetUserId]);
 
   useEffect(() => {
     if (!loading && user) {
       fetchPageData();
     } else if (!loading && !user) {
-      setIsLoadingData(false);
+      // Se não estiver logado, deixa o AuthContext redirecionar
+      // ou redireciona aqui também por segurança
     }
   }, [user, loading, fetchPageData]);
 
@@ -117,6 +139,74 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     await signOutUser();
+  };
+
+  // --- MODO ADMIN: Gerenciar Página ---
+  const handleManageUser = (uid: string, email: string | undefined) => {
+    setTargetUserId(uid);
+    setTargetUserEmail(email || 'Cliente');
+    setAdminMessage(null);
+    setFoundUser(null);
+    setSearchEmail('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExitAdminMode = () => {
+    setTargetUserId(null);
+    setTargetUserEmail(null);
+    // O useEffect vai disparar fetchPageData novamente com user.uid
+  };
+  // -----------------------------------
+
+  const handleOpenCheckout = (plan: 'Mensal' | 'Anual') => {
+    setSelectedPlan(plan);
+    setShowUpgradeModal(true);
+  };
+
+  const handleCheckout = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!cpfCnpj) {
+      alert('Por favor, informe seu CPF ou CNPJ.');
+      return;
+    }
+
+    setIsProcessingCheckout(true);
+    try {
+      const response = await axios.post('/api/checkout', {
+        userId: user?.uid,
+        email: user?.email,
+        name: user?.displayName || 'Usuário',
+        planType: selectedPlan,
+        cpfCnpj: cpfCnpj.replace(/\D/g, ''), // Remove formatação
+      });
+
+      if (response.data.invoiceUrl) {
+        window.location.href = response.data.invoiceUrl;
+      } else {
+        alert('Assinatura criada, mas não foi possível redirecionar. Verifique seu email.');
+        setShowUpgradeModal(false);
+      }
+    } catch (error: unknown) {
+      console.error('Erro no checkout:', error);
+      let serverError = 'Erro desconhecido';
+      let serverDetails = '';
+
+      if (axios.isAxiosError(error)) {
+        serverError = error.response?.data?.error || error.message;
+        serverDetails = error.response?.data?.details;
+      } else if (error instanceof Error) {
+        serverError = error.message;
+      }
+
+      alert(`Erro ao processar pagamento: ${serverError}${serverDetails ? `\nDetalhes: ${serverDetails}` : ''}`);
+    } finally {
+      setIsProcessingCheckout(false);
+    }
+  };
+
+  const generateWhatsAppLink = (planType: 'Mensal' | 'Anual', price: string) => {
+    const message = `Olá! Gostaria de fazer o upgrade para o plano Pro ${planType} (R$${price}).`;
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
   };
 
   const handleAddLink = async (e: FormEvent) => {
@@ -134,6 +224,7 @@ export default function DashboardPage() {
       ...(newLinkIcon.trim() && { icon: newLinkIcon.trim().toLowerCase() }),
       type: "website",
       order: newOrder,
+      clicks: 0,
     };
     try {
       await addLinkToPage(pageSlug, newLink);
@@ -222,6 +313,7 @@ export default function DashboardPage() {
     const theme = themes.find(t => t.name === themeName);
     if (!theme) return;
 
+    // Se for Admin editando, ignora restrição. Se for usuário normal, verifica plano.
     if (theme.isPro && !isProPlan) {
       alert('Este é um tema Pro! Faça upgrade para usá-lo.');
       return;
@@ -245,11 +337,11 @@ export default function DashboardPage() {
   const uploadToCloudinary = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'links-page-pro'); // Preset configurado no Cloudinary
-    formData.append('cloud_name', 'dhzzvc3vl'); // Cloud Name
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
 
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/dhzzvc3vl/image/upload', {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -359,8 +451,26 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* BARRA DE AVISO DO MODO ADMIN */}
+      {targetUserId && (
+        <div className="bg-red-600 text-white px-4 py-3 shadow-md sticky top-0 z-50">
+          <div className="max-w-4xl mx-auto flex justify-between items-center">
+            <div className="flex items-center gap-2 font-bold">
+              <FaUserCog className="text-xl" />
+              <span>MODO SUPER ADMIN: Gerenciando {targetUserEmail}</span>
+            </div>
+            <button 
+              onClick={handleExitAdminMode}
+              className="bg-white text-red-600 px-4 py-1 rounded-full text-sm font-bold hover:bg-gray-100 transition flex items-center gap-2"
+            >
+              <FaArrowLeft /> Sair e Voltar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <nav className={`bg-white shadow-sm ${targetUserId ? '' : 'sticky top-0 z-10'}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="shrink-0 flex items-center">
@@ -384,7 +494,7 @@ export default function DashboardPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">
-                Bem-vindo, {pageData?.title || userData?.displayName || user.displayName || 'Usuário'}!
+                {targetUserId ? `Editando: ${pageData?.title}` : `Bem-vindo, ${pageData?.title || userData?.displayName || user.displayName || 'Usuário'}!`}
               </h2>
               <span className={`text-sm font-medium px-3 py-1 rounded-full mt-2 inline-block ${isProPlan ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                 }`}>
@@ -526,31 +636,58 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-2">Formatos aceitos: JPG, PNG, WEBP.</p>
               </div>
 
-              {!isProPlan && (
+              {/* Banner Upgrade - Só exibe se NÃO for Pro E se NÃO estiver em modo Admin gerenciando outro usuário */}
+              {!isProPlan && !targetUserId && (
                 <div className="mt-8 pt-6 border-t border-gray-200" id="upgrade-section">
                   <h4 className="text-lg font-semibold text-center text-gray-800 mb-4">
                     ✨ Desbloqueie todos os temas com o Plano Pro! ✨
                   </h4>
                   <p className="text-center text-gray-600 mb-6">
-                    Escolha seu plano e fale conosco no WhatsApp para ativar:
+                    Escolha a melhor opção para você:
                   </p>
-                  <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    <a
-                      href={generateWhatsAppLink('Mensal', '9,99')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
-                    >
-                      Pro Mensal - R$9,99
-                    </a>
-                    <a
-                      href={generateWhatsAppLink('Anual', '90,00')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
-                    >
-                      Pro Anual - R$90,00 <span className="text-xs opacity-80">(Economize!)</span>
-                    </a>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Plano Mensal */}
+                    <div className="border rounded-lg p-6 flex flex-col items-center hover:shadow-md transition-shadow bg-gray-50">
+                      <h5 className="text-xl font-bold text-gray-800 mb-2">Pro Mensal</h5>
+                      <p className="text-3xl font-bold text-blue-600 mb-4">R$ 9,99<span className="text-sm text-gray-500 font-normal">/mês</span></p>
+                      <button
+                        onClick={() => handleOpenCheckout('Mensal')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md mb-3 flex items-center justify-center gap-2"
+                      >
+                        <FaCreditCard /> Assinar Agora
+                      </button>
+                      <a
+                        href={generateWhatsAppLink('Mensal', '9,99')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1"
+                      >
+                        <FaWhatsapp /> Ou pagar via WhatsApp (Manual)
+                      </a>
+                    </div>
+
+                    {/* Plano Anual */}
+                    <div className="border rounded-lg p-6 flex flex-col items-center hover:shadow-md transition-shadow bg-green-50 border-green-200">
+                      <div className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full mb-2">MAIS POPULAR</div>
+                      <h5 className="text-xl font-bold text-gray-800 mb-2">Pro Anual</h5>
+                      <p className="text-3xl font-bold text-green-600 mb-4">R$ 90,00<span className="text-sm text-gray-500 font-normal">/ano</span></p>
+                      <p className="text-xs text-green-700 mb-4">Economize R$ 29,88 por ano!</p>
+                      <button
+                        onClick={() => handleOpenCheckout('Anual')}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md mb-3 flex items-center justify-center gap-2"
+                      >
+                        <FaCreditCard /> Assinar Agora
+                      </button>
+                      <a
+                        href={generateWhatsAppLink('Anual', '90,00')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-gray-600 hover:text-green-600 flex items-center gap-1"
+                      >
+                        <FaWhatsapp /> Ou pagar via WhatsApp (Manual)
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
@@ -641,7 +778,8 @@ export default function DashboardPage() {
           </>
         )}
 
-        {isAdmin && (
+        {/* --- PAINEL ADMIN (Busca de Usuário) --- */}
+        {isAdmin && !targetUserId && (
           <div className="mt-12 border-t-2 border-red-600 pt-8">
             <h3 className="text-2xl font-bold text-red-700 mb-6 text-center">
               🛡️ Painel do Super Admin 🛡️
@@ -693,24 +831,22 @@ export default function DashboardPage() {
                     </span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {foundUser.plan === 'free' && (
-                      <button
-                        onClick={() => handleChangePlan('pro')}
-                        disabled={isUpdatingPlan}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isUpdatingPlan ? 'Atualizando...' : 'Ativar Plano Pro'}
-                      </button>
-                    )}
-                    {foundUser.plan === 'pro' && (
-                      <button
-                        onClick={() => handleChangePlan('free')}
-                        disabled={isUpdatingPlan}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isUpdatingPlan ? 'Atualizando...' : 'Desativar Pro (Tornar Gratuito)'}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleChangePlan(foundUser.plan === 'free' ? 'pro' : 'free')}
+                      disabled={isUpdatingPlan}
+                      className={`px-3 py-1 rounded text-white text-sm disabled:opacity-50 ${foundUser.plan === 'free' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'}`}
+                    >
+                      {foundUser.plan === 'free' ? 'Ativar Pro' : 'Desativar Pro'}
+                    </button>
+                    
+                    {/* NOVO: Botão Gerenciar Página */}
+                    <button 
+                      onClick={() => handleManageUser(foundUser.uid, foundUser.email)}
+                      className="px-3 py-1 rounded bg-blue-600 text-white text-sm flex items-center gap-1 hover:bg-blue-700"
+                    >
+                      <FaUserCog /> Gerenciar Página
+                    </button>
+
                     <button
                       onClick={() => { setFoundUser(null); setSearchEmail(''); setAdminMessage(null); }}
                       className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-1 px-3 rounded-md text-sm"
@@ -723,6 +859,66 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Modal de Checkout (Aparece apenas se NÃO estiver gerenciando outro usuário) */}
+        {
+          showUpgradeModal && !targetUserId && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+                <button 
+                  onClick={() => setShowUpgradeModal(false)} 
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes size={20} />
+                </button>
+
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  Assinar Plano Pro {selectedPlan}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Para processar sua assinatura automática e emitir sua nota fiscal, precisamos do seu CPF ou CNPJ.
+                </p>
+                <form onSubmit={handleCheckout}>
+                  <div className="mb-4">
+                    <label htmlFor="cpfCnpj" className="block text-sm font-medium text-gray-700 mb-1">
+                      CPF ou CNPJ
+                    </label>
+                    <input
+                      type="text"
+                      id="cpfCnpj"
+                      required
+                      value={cpfCnpj}
+                      onChange={(e) => setCpfCnpj(e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowUpgradeModal(false)}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md font-medium"
+                      disabled={isProcessingCheckout}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md font-medium flex items-center gap-2"
+                      disabled={isProcessingCheckout}
+                    >
+                      {isProcessingCheckout ? (
+                        <>Processando...</>
+                      ) : (
+                        <>Ir para Pagamento <FaCreditCard /></>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
 
       </main>
     </div>
