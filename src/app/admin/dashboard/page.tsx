@@ -1,7 +1,7 @@
 // src/app/admin/dashboard/page.tsx
 'use client';
 
-import React, { useEffect, useState, FormEvent, useCallback, ChangeEvent } from 'react';
+import React, { useEffect, useState, FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/authService';
@@ -10,8 +10,7 @@ import {
   updatePageTheme, updatePageBackground, updateProfileImage, PageData, LinkData, UserData,
   findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch, FaChartBar, FaCamera, FaCreditCard, FaWhatsapp, FaTimes, FaImage, FaUserCircle, FaUserCog, FaArrowLeft } from 'react-icons/fa';
-import axios from 'axios';
+import { FaLock, FaSearch, FaChartBar, FaCamera, FaWhatsapp, FaImage, FaUserCog, FaArrowLeft } from 'react-icons/fa';
 import Image from 'next/image';
 
 // --- CONFIGURAÇÃO DO CLOUDINARY ---
@@ -83,12 +82,6 @@ export default function DashboardPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
-  // Estados para Checkout Asaas
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'Mensal' | 'Anual'>('Mensal');
-  const [cpfCnpj, setCpfCnpj] = useState('');
-  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
-
   const whatsappNumber = "5579996337995";
 
   // --- FUNÇÕES ---
@@ -125,9 +118,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && user) {
       fetchPageData();
-    } else if (!loading && !user) {
-      // Se não estiver logado, deixa o AuthContext redirecionar
-      // ou redireciona aqui também por segurança
     }
   }, [user, loading, fetchPageData]);
 
@@ -157,52 +147,6 @@ export default function DashboardPage() {
     // O useEffect vai disparar fetchPageData novamente com user.uid
   };
   // -----------------------------------
-
-  const handleOpenCheckout = (plan: 'Mensal' | 'Anual') => {
-    setSelectedPlan(plan);
-    setShowUpgradeModal(true);
-  };
-
-  const handleCheckout = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!cpfCnpj) {
-      alert('Por favor, informe seu CPF ou CNPJ.');
-      return;
-    }
-
-    setIsProcessingCheckout(true);
-    try {
-      const response = await axios.post('/api/checkout', {
-        userId: user?.uid,
-        email: user?.email,
-        name: user?.displayName || 'Usuário',
-        planType: selectedPlan,
-        cpfCnpj: cpfCnpj.replace(/\D/g, ''), // Remove formatação
-      });
-
-      if (response.data.invoiceUrl) {
-        window.location.href = response.data.invoiceUrl;
-      } else {
-        alert('Assinatura criada, mas não foi possível redirecionar. Verifique seu email.');
-        setShowUpgradeModal(false);
-      }
-    } catch (error: unknown) {
-      console.error('Erro no checkout:', error);
-      let serverError = 'Erro desconhecido';
-      let serverDetails = '';
-
-      if (axios.isAxiosError(error)) {
-        serverError = error.response?.data?.error || error.message;
-        serverDetails = error.response?.data?.details;
-      } else if (error instanceof Error) {
-        serverError = error.message;
-      }
-
-      alert(`Erro ao processar pagamento: ${serverError}${serverDetails ? `\nDetalhes: ${serverDetails}` : ''}`);
-    } finally {
-      setIsProcessingCheckout(false);
-    }
-  };
 
   const generateWhatsAppLink = (planType: 'Mensal' | 'Anual', price: string) => {
     const message = `Olá! Gostaria de fazer o upgrade para o plano Pro ${planType} (R$${price}).`;
@@ -333,7 +277,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Função genérica de upload para o Cloudinary
+  // Função genérica de upload para o Cloudinary (SEM AXIOS, usando FETCH)
   const uploadToCloudinary = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -643,51 +587,25 @@ export default function DashboardPage() {
                     ✨ Desbloqueie todos os temas com o Plano Pro! ✨
                   </h4>
                   <p className="text-center text-gray-600 mb-6">
-                    Escolha a melhor opção para você:
+                    Escolha seu plano e fale conosco no WhatsApp para ativar:
                   </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Plano Mensal */}
-                    <div className="border rounded-lg p-6 flex flex-col items-center hover:shadow-md transition-shadow bg-gray-50">
-                      <h5 className="text-xl font-bold text-gray-800 mb-2">Pro Mensal</h5>
-                      <p className="text-3xl font-bold text-blue-600 mb-4">R$ 9,99<span className="text-sm text-gray-500 font-normal">/mês</span></p>
-                      <button
-                        onClick={() => handleOpenCheckout('Mensal')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md mb-3 flex items-center justify-center gap-2"
-                      >
-                        <FaCreditCard /> Assinar Agora
-                      </button>
-                      <a
-                        href={generateWhatsAppLink('Mensal', '9,99')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1"
-                      >
-                        <FaWhatsapp /> Ou pagar via WhatsApp (Manual)
-                      </a>
-                    </div>
-
-                    {/* Plano Anual */}
-                    <div className="border rounded-lg p-6 flex flex-col items-center hover:shadow-md transition-shadow bg-green-50 border-green-200">
-                      <div className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full mb-2">MAIS POPULAR</div>
-                      <h5 className="text-xl font-bold text-gray-800 mb-2">Pro Anual</h5>
-                      <p className="text-3xl font-bold text-green-600 mb-4">R$ 90,00<span className="text-sm text-gray-500 font-normal">/ano</span></p>
-                      <p className="text-xs text-green-700 mb-4">Economize R$ 29,88 por ano!</p>
-                      <button
-                        onClick={() => handleOpenCheckout('Anual')}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md mb-3 flex items-center justify-center gap-2"
-                      >
-                        <FaCreditCard /> Assinar Agora
-                      </button>
-                      <a
-                        href={generateWhatsAppLink('Anual', '90,00')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-600 hover:text-green-600 flex items-center gap-1"
-                      >
-                        <FaWhatsapp /> Ou pagar via WhatsApp (Manual)
-                      </a>
-                    </div>
+                  <div className="flex flex-col sm:flex-row justify-center gap-4">
+                    <a
+                      href={generateWhatsAppLink('Mensal', '9,99')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
+                    >
+                      Pro Mensal - R$9,99
+                    </a>
+                    <a
+                      href={generateWhatsAppLink('Anual', '90,00')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out"
+                    >
+                      Pro Anual - R$90,00 <span className="text-xs opacity-80">(Economize!)</span>
+                    </a>
                   </div>
                 </div>
               )}
@@ -830,7 +748,8 @@ export default function DashboardPage() {
                       {foundUser.plan === 'pro' ? 'Pro' : 'Gratuito'}
                     </span>
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {/* Botões de Plano */}
                     <button
                       onClick={() => handleChangePlan(foundUser.plan === 'free' ? 'pro' : 'free')}
                       disabled={isUpdatingPlan}
@@ -859,66 +778,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-
-        {/* Modal de Checkout (Aparece apenas se NÃO estiver gerenciando outro usuário) */}
-        {
-          showUpgradeModal && !targetUserId && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
-                <button 
-                  onClick={() => setShowUpgradeModal(false)} 
-                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                >
-                  <FaTimes size={20} />
-                </button>
-
-                <h3 className="text-xl font-bold text-gray-900 mb-4">
-                  Assinar Plano Pro {selectedPlan}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Para processar sua assinatura automática e emitir sua nota fiscal, precisamos do seu CPF ou CNPJ.
-                </p>
-                <form onSubmit={handleCheckout}>
-                  <div className="mb-4">
-                    <label htmlFor="cpfCnpj" className="block text-sm font-medium text-gray-700 mb-1">
-                      CPF ou CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      id="cpfCnpj"
-                      required
-                      value={cpfCnpj}
-                      onChange={(e) => setCpfCnpj(e.target.value)}
-                      placeholder="000.000.000-00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowUpgradeModal(false)}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md font-medium"
-                      disabled={isProcessingCheckout}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md font-medium flex items-center gap-2"
-                      disabled={isProcessingCheckout}
-                    >
-                      {isProcessingCheckout ? (
-                        <>Processando...</>
-                      ) : (
-                        <>Ir para Pagamento <FaCreditCard /></>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )
-        }
 
       </main>
     </div>
