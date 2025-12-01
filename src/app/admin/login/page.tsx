@@ -35,7 +35,8 @@ export default function LoginPage() {
             Gerencie seus links, analise suas métricas e personalize sua página para atrair mais clientes.
           </p>
           <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
-            <p className="italic">"Desde que comecei a usar o Meus Links Pro, meus cliques no WhatsApp aumentaram 150%."</p>
+            {/* CORREÇÃO AQUI: Trocamos as aspas duplas por &quot; */}
+            <p className="italic">&quot;Desde que comecei a usar o Meus Links Pro, meus cliques no WhatsApp aumentaram 150%.&quot;</p>
             <div className="mt-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/30"></div>
               <span className="font-semibold text-sm">Usuário Satisfeito</span>

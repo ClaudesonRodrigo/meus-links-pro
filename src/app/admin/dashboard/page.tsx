@@ -10,7 +10,7 @@ import {
   updatePageTheme, updatePageBackground, updateProfileImage, updatePageProfileInfo,
   PageData, LinkData, UserData, findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch, FaChartBar, FaCamera, FaCreditCard, FaWhatsapp, FaUserCog, FaArrowLeft, FaImage, FaSave } from 'react-icons/fa';
+import { FaLock, FaSearch, FaCamera, FaUserCog, FaArrowLeft, FaImage, FaSave } from 'react-icons/fa';
 import Image from 'next/image';
 
 // --- Imports para Drag and Drop ---
@@ -83,9 +83,6 @@ export default function DashboardPage() {
   const [editingUrl, setEditingUrl] = useState('');
   const [editingIcon, setEditingIcon] = useState('');
   const [copyButtonText, setCopyButtonText] = useState('Copiar');
-
-  // Estado para a imagem de fundo personalizada
-  const [customBgUrl, setCustomBgUrl] = useState('');
 
   // Estados para upload
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
@@ -181,12 +178,6 @@ export default function DashboardPage() {
         setEditingProfileTitle(data.title || '');
         setEditingProfileBio(data.bio || '');
 
-        // Carrega a imagem de fundo atual se existir
-        if (data.backgroundImage) {
-          setCustomBgUrl(data.backgroundImage);
-        } else {
-          setCustomBgUrl(''); // Limpa se não tiver
-        }
       } else {
         console.error("Não foi possível carregar os dados da página do usuário.");
         setPageData(null);
@@ -398,7 +389,8 @@ export default function DashboardPage() {
       setPageData(prev => prev ? { ...prev, profileImageUrl: imageUrl } : null);
       alert("Foto de perfil atualizada com sucesso!");
     } catch (error) {
-      alert("Erro ao atualizar foto de perfil.");
+        console.error(error); // CORREÇÃO: Usando a variável erro para log
+        alert("Erro ao atualizar foto de perfil.");
     } finally {
       setIsUploadingProfile(false);
     }
@@ -417,11 +409,11 @@ export default function DashboardPage() {
     try {
       const imageUrl = await uploadToCloudinary(file);
       await updatePageBackground(pageSlug, imageUrl);
-      setCustomBgUrl(imageUrl);
       setPageData(prev => prev ? { ...prev, backgroundImage: imageUrl } : null);
       alert("Imagem de fundo atualizada com sucesso!");
     } catch (error) {
-      alert("Erro ao atualizar imagem de fundo.");
+        console.error(error); // CORREÇÃO: Usando a variável erro para log
+        alert("Erro ao atualizar imagem de fundo.");
     } finally {
       setIsUploadingBg(false);
     }
@@ -434,8 +426,9 @@ export default function DashboardPage() {
       await updatePageProfileInfo(pageSlug, editingProfileTitle, editingProfileBio);
       setPageData(prev => prev ? { ...prev, title: editingProfileTitle, bio: editingProfileBio } : null);
       alert("Informações salvas!");
-    } catch (error) { 
-      alert("Erro ao salvar informações."); 
+    } catch (error) {
+        console.error(error); // CORREÇÃO: Usando a variável erro para log
+        alert("Erro ao salvar informações."); 
     }
   };
 
