@@ -7,10 +7,10 @@ import { useAuth } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/authService';
 import {
   getPageDataForUser, addLinkToPage, deleteLinkFromPage, updateLinksOnPage,
-  updatePageTheme, updatePageBackground, updateProfileImage, PageData, LinkData, UserData,
-  findUserByEmail, updateUserPlan
+  updatePageTheme, updatePageBackground, updateProfileImage, updatePageProfileInfo,
+  PageData, LinkData, UserData, findUserByEmail, updateUserPlan
 } from '@/lib/pageService';
-import { FaLock, FaSearch, FaChartBar, FaCamera, FaWhatsapp, FaImage, FaUserCog, FaArrowLeft } from 'react-icons/fa';
+import { FaLock, FaSearch, FaChartBar, FaCamera, FaCreditCard, FaWhatsapp, FaUserCog, FaArrowLeft, FaImage, FaSave } from 'react-icons/fa';
 import Image from 'next/image';
 
 // --- CONFIGURAÇÃO DO CLOUDINARY ---
@@ -51,6 +51,10 @@ export default function DashboardPage() {
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const [targetUserEmail, setTargetUserEmail] = useState<string | null>(null);
   // --------------------------------------------------
+
+  // --- ESTADOS PARA EDIÇÃO DE PERFIL (TEXTO) ---
+  const [editingProfileTitle, setEditingProfileTitle] = useState('');
+  const [editingProfileBio, setEditingProfileBio] = useState('');
 
   // Estados de Links e UI
   const [newLinkTitle, setNewLinkTitle] = useState('');
@@ -98,6 +102,11 @@ export default function DashboardPage() {
         const data = result.data as PageData;
         setPageData(data);
         setPageSlug(result.slug);
+        
+        // Carrega os textos para edição
+        setEditingProfileTitle(data.title || '');
+        setEditingProfileBio(data.bio || '');
+
         // Carrega a imagem de fundo atual se existir
         if (data.backgroundImage) {
           setCustomBgUrl(data.backgroundImage);
@@ -344,6 +353,17 @@ export default function DashboardPage() {
     }
   };
 
+  // --- SALVAR TEXTOS (NOVO) ---
+  const handleSaveProfileInfo = async () => {
+    if (!pageSlug) return;
+    try {
+      await updatePageProfileInfo(pageSlug, editingProfileTitle, editingProfileBio);
+      setPageData(prev => prev ? { ...prev, title: editingProfileTitle, bio: editingProfileBio } : null);
+      alert("Informações salvas!");
+    } catch (error) { 
+      alert("Erro ao salvar informações."); 
+    }
+  };
 
   const handleSearchUser = async (e: FormEvent) => {
     e.preventDefault();
@@ -511,9 +531,49 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* --- NOVA SEÇÃO: INFORMAÇÕES DO PERFIL --- */}
+            <div className="bg-white p-6 rounded-lg shadow mb-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Informações do Perfil</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nome / Título</label>
+                  <input
+                    type="text"
+                    value={editingProfileTitle}
+                    onChange={(e) => setEditingProfileTitle(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Bio (Descrição)</label>
+                  <textarea
+                    value={editingProfileBio}
+                    onChange={(e) => setEditingProfileBio(e.target.value)}
+                    rows={3}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveProfileInfo}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium flex items-center gap-2"
+                >
+                  <FaSave /> Salvar Informações
+                </button>
+              </div>
+            </div>
+            {/* ----------------------------------------- */}
+
             <div className="bg-white p-6 rounded-lg shadow mb-8" id="appearance-section">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Aparência</h3>
               <p className="text-gray-600 mb-4">Escolha um tema para sua página pública.</p>
+              
+              {/* Upload Fundo */}
+              <div className="mb-6 p-4 bg-gray-50 rounded border">
+                 <h4 className="font-medium mb-2 flex items-center gap-2"><FaImage /> Fundo Personalizado {!isProPlan && <FaLock className="text-gray-400 w-3 h-3" />}</h4>
+                 <input type="file" accept="image/*" onChange={handleBackgroundImageUpload} disabled={!isProPlan || isUploadingBg} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                 {isUploadingBg && <p className="text-xs text-indigo-600 mt-1">Enviando...</p>}
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
                 {themes.map((theme) => {
                   const isActive = (pageData?.theme || 'light') === theme.name;
@@ -543,44 +603,7 @@ export default function DashboardPage() {
                 })}
               </div>
 
-              {/* Seção de Imagem de Fundo Personalizada */}
-              <div className="border-t pt-6">
-                <h4 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
-                  Imagem de Fundo Personalizada
-                  {!isProPlan && <FaLock className="text-gray-400 w-4 h-4" />}
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  <div className="flex-grow w-full">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Upload de Imagem
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBackgroundImageUpload}
-                      disabled={!isProPlan || isUploadingBg}
-                      className="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-md file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-indigo-50 file:text-indigo-700
-                          hover:file:bg-indigo-100
-                          disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    {isUploadingBg && <p className="text-xs text-indigo-600 mt-1">Enviando imagem...</p>}
-                  </div>
-
-                  {/* Preview ou Input de URL (opcional, mantido apenas o preview se existir) */}
-                  {customBgUrl && (
-                    <div className="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shrink-0">
-                      <Image src={customBgUrl} alt="Background Preview" fill className="object-cover" />
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Formatos aceitos: JPG, PNG, WEBP.</p>
-              </div>
-
-              {/* Banner Upgrade - Só exibe se NÃO for Pro E se NÃO estiver em modo Admin gerenciando outro usuário */}
+              {/* Banner Upgrade */}
               {!isProPlan && !targetUserId && (
                 <div className="mt-8 pt-6 border-t border-gray-200" id="upgrade-section">
                   <h4 className="text-lg font-semibold text-center text-gray-800 mb-4">
@@ -748,7 +771,7 @@ export default function DashboardPage() {
                       {foundUser.plan === 'pro' ? 'Pro' : 'Gratuito'}
                     </span>
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {/* Botões de Plano */}
                     <button
                       onClick={() => handleChangePlan(foundUser.plan === 'free' ? 'pro' : 'free')}

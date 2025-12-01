@@ -28,22 +28,17 @@ export type PageData = {
   slug: string; // Adicionado para garantir que o tipo esteja completo
 };
 
-// --- ADICIONADO TIPO UserData (pode ser movido para um arquivo types.ts no futuro) ---
+// --- ADICIONADO TIPO UserData ---
 export type UserData = {
   plan: string;
   pageSlug: string;
   displayName?: string;
   email?: string;
   role?: string;
-  // Adicione outros campos da coleção 'users' se houver
 };
-// --- FIM ADIÇÃO UserData ---
 
 /**
  * Busca os dados da página de um usuário pelo ID do usuário.
- * Usado principalmente no Dashboard.
- * @param userId - O ID do usuário autenticado.
- * @returns Um objeto contendo o slug e os dados da página, ou null.
  */
 export const getPageDataForUser = async (userId: string): Promise<{ slug: string, data: DocumentData } | null> => {
   try {
@@ -57,31 +52,24 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
 
     const pageSlug = userDocSnap.data()?.pageSlug;
     if (!pageSlug) {
-      // Tenta buscar diretamente na coleção pages como fallback (caso users.pageSlug não exista por algum motivo)
-      console.warn(`pageSlug não encontrado no documento /users/${userId}. Tentando fallback na coleção 'pages'...`);
+      console.warn(`pageSlug não encontrado em /users/${userId}. Tentando fallback...`);
       const pagesRef = collection(db, "pages");
       const q = query(pagesRef, where("userId", "==", userId));
       const pagesSnap = await getDocs(q);
       if (!pagesSnap.empty) {
         const pageDoc = pagesSnap.docs[0];
-        console.log(`Fallback bem-sucedido: encontrado /pages/${pageDoc.id} para userId ${userId}`);
         return { slug: pageDoc.id, data: pageDoc.data() };
       } else {
-        console.error(`Fallback falhou: Nenhum documento em /pages encontrado para userId ${userId}.`);
-        return null; // Retorna null se nem o fallback funcionar
+         return null;
       }
     }
 
-    // Usar o pageSlug original para buscar os dados da página
     const pageDocRef = doc(db, "pages", pageSlug);
     const pageDocSnap = await getDoc(pageDocRef);
 
     if (pageDocSnap.exists()) {
-      // Retorna tanto o slug quanto os dados
       return { slug: pageSlug, data: pageDocSnap.data() };
     } else {
-      console.warn(`Documento /pages/${pageSlug} (referenciado por /users/${userId}) não foi encontrado!`);
-      // Poderia tentar o fallback aqui também se quisesse ser redundante
       return null;
     }
   } catch (error) {
@@ -90,11 +78,8 @@ export const getPageDataForUser = async (userId: string): Promise<{ slug: string
   }
 };
 
-
 /**
- * Adiciona um novo link ao array de links de uma página específica.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param newLink - O objeto do novo link a ser adicionado.
+ * Adiciona um novo link
  */
 export const addLinkToPage = async (pageSlug: string, newLink: LinkData): Promise<void> => {
   try {
@@ -109,9 +94,7 @@ export const addLinkToPage = async (pageSlug: string, newLink: LinkData): Promis
 };
 
 /**
- * Remove um link específico do array de links de uma página.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param linkToDelete - O objeto exato do link a ser removido.
+ * Remove um link
  */
 export const deleteLinkFromPage = async (pageSlug: string, linkToDelete: LinkData): Promise<void> => {
   try {
@@ -126,9 +109,7 @@ export const deleteLinkFromPage = async (pageSlug: string, linkToDelete: LinkDat
 };
 
 /**
- * ATUALIZA O ARRAY DE LINKS INTEIRO NO DOCUMENTO.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param updatedLinks - O array de links completo e atualizado.
+ * Atualiza todos os links
  */
 export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData[]): Promise<void> => {
   try {
@@ -143,47 +124,32 @@ export const updateLinksOnPage = async (pageSlug: string, updatedLinks: LinkData
 };
 
 /**
- * Incrementa o contador de cliques de um link específico.
- * @param pageSlug - O slug da página.
- * @param linkUrl - A URL do link que foi clicado.
+ * Incrementa cliques
  */
 export const incrementLinkClick = async (pageSlug: string, linkUrl: string): Promise<void> => {
   try {
     const pageDocRef = doc(db, "pages", pageSlug);
-    const pageDocSnap = await getDoc(pageDocRef);
+    const pageSnap = await getDoc(pageDocRef);
 
-    if (pageDocSnap.exists()) {
-      const pageData = pageDocSnap.data() as PageData;
+    if (pageSnap.exists()) {
+      const pageData = pageSnap.data() as PageData;
       const links = pageData.links || [];
-
-      // Encontra o índice do link clicado
       const linkIndex = links.findIndex(l => l.url === linkUrl);
 
       if (linkIndex !== -1) {
         const updatedLinks = [...links];
         const currentClicks = updatedLinks[linkIndex].clicks || 0;
-
-        // Atualiza o contador
-        updatedLinks[linkIndex] = {
-          ...updatedLinks[linkIndex],
-          clicks: currentClicks + 1
-        };
-
-        // Salva o array atualizado no Firestore
+        updatedLinks[linkIndex] = { ...updatedLinks[linkIndex], clicks: currentClicks + 1 };
         await updateDoc(pageDocRef, { links: updatedLinks });
-        // console.log(`Clique incrementado para ${linkUrl}. Total: ${currentClicks + 1}`);
       }
     }
   } catch (error) {
     console.error("Erro ao incrementar clique:", error);
-    // Não lançamos erro para não atrapalhar a navegação do usuário
   }
 };
 
 /**
- * Busca os dados de uma página pública diretamente pelo seu slug.
- * @param slug - O identificador (ID do documento) da página na coleção 'pages'.
- * @returns Os dados completos da página ou null se não for encontrada.
+ * Busca dados públicos
  */
 export const getPageDataBySlug = async (slug: string): Promise<DocumentData | null> => {
   try {
@@ -193,7 +159,6 @@ export const getPageDataBySlug = async (slug: string): Promise<DocumentData | nu
     if (pageDocSnap.exists()) {
       return pageDocSnap.data();
     } else {
-      console.log(`Nenhum documento de página encontrado para o slug: ${slug}`);
       return null;
     }
   } catch (error) {
@@ -203,9 +168,7 @@ export const getPageDataBySlug = async (slug: string): Promise<DocumentData | nu
 };
 
 /**
- * ATUALIZA APENAS O CAMPO 'theme' DE UMA PÁGINA.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param theme - O nome do novo tema (ex: 'light', 'dark', 'ocean').
+ * Atualiza o tema
  */
 export const updatePageTheme = async (pageSlug: string, theme: string): Promise<void> => {
   try {
@@ -220,9 +183,7 @@ export const updatePageTheme = async (pageSlug: string, theme: string): Promise<
 };
 
 /**
- * ATUALIZA A IMAGEM DE FUNDO DE UMA PÁGINA.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param imageUrl - A URL da imagem de fundo (ou string vazia para remover).
+ * Atualiza Fundo
  */
 export const updatePageBackground = async (pageSlug: string, imageUrl: string): Promise<void> => {
   try {
@@ -237,9 +198,7 @@ export const updatePageBackground = async (pageSlug: string, imageUrl: string): 
 };
 
 /**
- * ATUALIZA A FOTO DE PERFIL DE UMA PÁGINA.
- * @param pageSlug - O slug da página a ser atualizada.
- * @param imageUrl - A URL da nova foto de perfil.
+ * Atualiza Foto de Perfil
  */
 export const updateProfileImage = async (pageSlug: string, imageUrl: string): Promise<void> => {
   try {
@@ -253,53 +212,43 @@ export const updateProfileImage = async (pageSlug: string, imageUrl: string): Pr
   }
 };
 
-
-// --- NOVAS FUNÇÕES DE ADMIN ---
-
 /**
- * Busca um usuário pelo seu email. Requer índice no Firestore.
- * @param email - O email do usuário a ser encontrado.
- * @returns Os dados do usuário (incluindo UID) ou null se não encontrado.
+ * NOVA FUNÇÃO: ATUALIZA TÍTULO E BIO (TEXTOS)
  */
+export const updatePageProfileInfo = async (pageSlug: string, title: string, bio: string): Promise<void> => {
+  try {
+    const pageDocRef = doc(db, "pages", pageSlug);
+    await updateDoc(pageDocRef, {
+      title: title,
+      bio: bio
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar perfil:", error);
+    throw new Error("Não foi possível atualizar as informações do perfil.");
+  }
+};
+
+// --- FUNÇÕES ADMIN ---
+
 export const findUserByEmail = async (email: string): Promise<(UserData & { uid: string }) | null> => {
-  if (!email) return null; // Evita query vazia
+  if (!email) return null;
   try {
     const usersRef = collection(db, "users");
-    // Cria uma query para buscar pelo campo 'email'
-    const q = query(usersRef, where("email", "==", email.trim())); // Adiciona trim() para segurança
+    const q = query(usersRef, where("email", "==", email.trim()));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      console.log(`Nenhum usuário encontrado com o email: ${email}`);
       return null;
     }
-
-    // Pega o primeiro resultado (emails devem ser únicos, mas a query pode retornar mais se houver erro)
-    if (querySnapshot.docs.length > 1) {
-      console.warn(`Múltiplos usuários encontrados com o email ${email}. Retornando o primeiro.`);
-    }
     const userDoc = querySnapshot.docs[0];
-    // Retorna um objeto combinado com o UID e os dados do documento
     return { uid: userDoc.id, ...(userDoc.data() as UserData) };
 
   } catch (error) {
     console.error("Erro ao buscar usuário por email:", error);
-    // Verificar se é erro de índice faltando
-    // @ts-expect-error - O 'error' pego no catch é 'unknown', mas sabemos que erros do Firebase têm a propriedade 'code'.
-    if (error.code === 'failed-precondition') {
-      console.error("ERRO: Índice do Firestore provavelmente faltando para a coleção 'users' no campo 'email'. Verifique o console do Firebase para criar o índice.");
-      alert("Erro ao buscar: Índice do banco de dados necessário. Verifique o console para mais detalhes.");
-    }
     return null;
   }
 };
 
-
-/**
- * Atualiza o plano de um usuário específico (requer permissão de admin via regras).
- * @param targetUserId - O UID do usuário cujo plano será atualizado.
- * @param newPlan - O novo status do plano ('free' or 'pro').
- */
 export const updateUserPlan = async (targetUserId: string, newPlan: 'free' | 'pro'): Promise<void> => {
   if (!targetUserId) {
     throw new Error("UID do usuário alvo não pode ser vazio.");
@@ -309,16 +258,8 @@ export const updateUserPlan = async (targetUserId: string, newPlan: 'free' | 'pr
     await updateDoc(userDocRef, {
       plan: newPlan
     });
-    console.log(`Plano do usuário ${targetUserId} atualizado para ${newPlan}`);
   } catch (error) {
-    console.error(`Erro ao atualizar plano do usuário ${targetUserId}:`, error);
-    // Tenta dar uma mensagem de erro mais útil baseada no código do erro
-    // @ts-expect-error - O 'error' pego no catch é 'unknown', mas sabemos que erros do Firebase têm a propriedade 'code'.
-    if (error.code === 'permission-denied') {
-      throw new Error("Permissão negada. Verifique as regras de segurança do Firestore e se você está logado como admin.");
-    }
-    throw new Error("Falha ao atualizar o plano do usuário."); // Re-lança para tratamento no UI
+    console.error(`Erro ao atualizar plano:`, error);
+    throw new Error("Falha ao atualizar o plano do usuário.");
   }
 };
-
-// --- FIM DAS NOVAS FUNÇÕES DE ADMIN ---

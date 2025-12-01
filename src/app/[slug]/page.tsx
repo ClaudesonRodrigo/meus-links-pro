@@ -168,7 +168,7 @@ export default function UserPage({ params }: { params: Promise<{ slug: string }>
                     <IconComponent />
                   </span>
                 )}
-                <span className="font-medium flex-grow text-center pr-6">{link.title}</span>
+                <span className="font-medium grow text-center pr-6">{link.title}</span>
               </motion.a>
             );
           })}
