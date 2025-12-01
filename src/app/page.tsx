@@ -208,7 +208,7 @@ const VideoSection = () => {
           <iframe 
             width="100%" 
             height="100%" 
-            src="https://www.youtube.com/shorts/fuemzRXImTo" 
+            src="https://www.youtube.com/watch?v=j2WB_5eHa7M" 
             title="Video Demo"
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
