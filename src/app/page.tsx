@@ -200,7 +200,7 @@ const VideoSection = () => {
     <section id="demonstracao" className="py-20 bg-gray-900 text-white overflow-hidden relative">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
       <div className="container mx-auto px-4 relative z-10 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-8">Veja como é fácil criar</h2>
+        <h2 className="text-3xl md:text-4xl font-bold mb-8">Temos a Opção de fazer as configurações para você</h2>
         
         <div className="max-w-4xl mx-auto aspect-video bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700 relative group">
           
@@ -215,7 +215,7 @@ const VideoSection = () => {
             // Você pode adicionar uma imagem de capa (poster) colocando-a na pasta public também
             // poster="/poster-video.jpg" 
           >
-            <source src="/demo-video.mp4" type="video/mp4" />
+            <source src="/video.mp4" type="video/mp4" />
             Seu navegador não suporta a tag de vídeo.
           </video>
 
