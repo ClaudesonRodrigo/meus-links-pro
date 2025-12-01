@@ -13,6 +13,24 @@ import {
 import { FaLock, FaSearch, FaChartBar, FaCamera, FaCreditCard, FaWhatsapp, FaUserCog, FaArrowLeft, FaImage, FaSave } from 'react-icons/fa';
 import Image from 'next/image';
 
+// --- Imports para Drag and Drop ---
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors, 
+  DragEndEvent 
+} from '@dnd-kit/core';
+import { 
+  arrayMove, 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy 
+} from '@dnd-kit/sortable';
+import { SortableLinkItem } from '@/components/SortableLinkItem';
+
 // --- CONFIGURAÇÃO DO CLOUDINARY ---
 // Substitua pelos seus dados reais
 const CLOUDINARY_CLOUD_NAME = "dhzzvc3vl"; 
@@ -88,6 +106,56 @@ export default function DashboardPage() {
 
   const whatsappNumber = "5579996337995";
 
+  // --- CONFIGURAÇÃO DOS SENSORES DO DND-KIT ---
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Só ativa o drag se mover 5px (evita cliques acidentais)
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // --- FUNÇÃO PARA LIDAR COM O FIM DO ARRASTE ---
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    // Se soltou sobre um item diferente do que pegou
+    if (over && active.id !== over.id && pageData?.links) {
+      setPageData((prev) => {
+        if (!prev) return null;
+        
+        // Encontra os índices usando o ID (url + index) que definimos no componente SortableLinkItem
+        const oldIndex = prev.links.findIndex((link, idx) => (link.url + idx) === active.id);
+        const newIndex = prev.links.findIndex((link, idx) => (link.url + idx) === over.id);
+
+        // Reordena o array localmente
+        const newLinks = arrayMove(prev.links, oldIndex, newIndex);
+        
+        // Atualiza a propriedade 'order' baseada na nova posição do array para persistência
+        const reorderedLinks = newLinks.map((link, index) => ({
+          ...link,
+          order: index + 1
+        }));
+
+        // Dispara a atualização no Firebase em background
+        if (pageSlug) {
+            updateLinksOnPage(pageSlug, reorderedLinks).catch(err => {
+                console.error("Erro ao salvar ordem:", err);
+                alert("Erro ao salvar a nova ordem dos links.");
+            });
+        }
+
+        return {
+          ...prev,
+          links: reorderedLinks,
+        };
+      });
+    }
+  };
+
   // --- FUNÇÕES ---
 
   // Busca os dados da página (do usuário logado OU do usuário alvo se for admin)
@@ -100,6 +168,12 @@ export default function DashboardPage() {
       const result = await getPageDataForUser(idToFetch);
       if (result) {
         const data = result.data as PageData;
+        
+        // Ordena os links antes de setar o estado para garantir que apareçam na ordem correta
+        if (data.links) {
+            data.links.sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+
         setPageData(data);
         setPageSlug(result.slug);
         
@@ -661,58 +735,66 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Meus Links Atuais</h3>
-              <div className="bg-white p-6 rounded-lg shadow space-y-4">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Meus Links (Arraste para reordenar)</h3>
+              <div className="bg-white p-6 rounded-lg shadow">
                 {pageData?.links && pageData.links.length > 0 ? (
-                  [...pageData.links]
-                    .sort((a, b) => (a.order || 0) - (b.order || 0))
-                    .map((link, index) => (
-                      <div key={link.url + index} className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                        {editingIndex === index ? (
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs font-medium text-gray-500">Título</label>
-                              <input type="text" value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)}
-                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-xs font-medium text-gray-500">URL</label>
-                              <input type="url" value={editingUrl} onChange={(e) => setEditingUrl(e.target.value)}
-                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-xs font-medium text-gray-500">Ícone</label>
-                              <input type="text" value={editingIcon} onChange={(e) => setEditingIcon(e.target.value)}
-                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" placeholder="Ícone (opcional)" />
-                              <p className="mt-1 text-xs text-gray-500">Ex: github, instagram, linkedin, globe</p>
-                            </div>
-                            <div className="flex justify-end space-x-2 pt-2">
-                              <button onClick={handleCancelEdit} className="bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-1 px-3 rounded-md text-sm">Cancelar</button>
-                              <button onClick={() => handleUpdateLink(index)} className="bg-green-600 text-white hover:bg-green-700 font-semibold py-1 px-3 rounded-md text-sm">Salvar</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{link.title}</p>
-                              <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-all">{link.url}</a>
-                              {link.icon && <p className="text-xs text-gray-500 mt-1">Ícone: {link.icon}</p>}
+                  <DndContext 
+                    sensors={sensors} 
+                    collisionDetection={closestCenter} 
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext 
+                      items={pageData.links.map((l, idx) => l.url + idx)} 
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-3">
+                        {pageData.links.map((link, index) => {
+                           // Se estiver editando ESTE item específico, mostramos o form antigo
+                           if (editingIndex === index) {
+                             return (
+                               <div key={link.url + index} className="p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-inner mb-3">
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="text-xs font-medium text-gray-500">Título</label>
+                                      <input type="text" value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-gray-500">URL</label>
+                                      <input type="url" value={editingUrl} onChange={(e) => setEditingUrl(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-gray-500">Ícone</label>
+                                      <input type="text" value={editingIcon} onChange={(e) => setEditingIcon(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm" placeholder="Ícone (opcional)" />
+                                    </div>
+                                    <div className="flex justify-end space-x-2 pt-2">
+                                      <button onClick={handleCancelEdit} className="bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-1 px-3 rounded-md text-sm">Cancelar</button>
+                                      <button onClick={() => handleUpdateLink(index)} className="bg-green-600 text-white hover:bg-green-700 font-semibold py-1 px-3 rounded-md text-sm">Salvar</button>
+                                    </div>
+                                  </div>
+                               </div>
+                             );
+                           }
 
-                              <div className="flex items-center text-xs text-gray-600 mt-1 gap-1" title="Total de cliques">
-                                <FaChartBar className="text-blue-500" />
-                                <span className="font-medium">{link.clicks || 0} cliques</span>
-                              </div>
-                            </div>
-                            <div className='flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                              <button onClick={() => handleEditClick(link, index)} className="w-full sm:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold py-1 px-3 rounded-md text-sm">Editar</button>
-                              <button onClick={() => handleDeleteLink(link)} className="w-full sm:w-auto bg-red-100 text-red-700 hover:bg-red-200 font-semibold py-1 px-3 rounded-md text-sm">Excluir</button>
-                            </div>
-                          </div>
-                        )}
+                           // Se NÃO estiver editando, mostra o item arrastável
+                           return (
+                             <SortableLinkItem 
+                               key={link.url + index}
+                               link={link}
+                               index={index}
+                               onEdit={() => handleEditClick(link, index)}
+                               onDelete={() => handleDeleteLink(link)}
+                               editingIndex={editingIndex}
+                             />
+                           );
+                        })}
                       </div>
-                    ))
+                    </SortableContext>
+                  </DndContext>
                 ) : (
-                  <p className="text-center text-gray-500">Você ainda não tem links. Adicione um acima!</p>
+                  <p className="text-center text-gray-500 py-4">Você ainda não tem links. Adicione um acima!</p>
                 )}
               </div>
             </div>
