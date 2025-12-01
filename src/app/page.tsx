@@ -194,7 +194,7 @@ const FeaturesSection = () => {
   );
 };
 
-// Seção de Vídeo (Opcional - Adicione seu link do YouTube aqui)
+// Seção de Vídeo (AGORA COM UPLOAD PRÓPRIO / ARQUIVO LOCAL)
 const VideoSection = () => {
   return (
     <section id="demonstracao" className="py-20 bg-gray-900 text-white overflow-hidden relative">
@@ -202,27 +202,25 @@ const VideoSection = () => {
       <div className="container mx-auto px-4 relative z-10 text-center">
         <h2 className="text-3xl md:text-4xl font-bold mb-8">Veja como é fácil criar</h2>
         
-        <div className="max-w-4xl mx-auto aspect-video bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700 relative group cursor-pointer">
-          {/* PLACEHOLDER PARA VÍDEO - Substitua o iframe abaixo pelo seu vídeo real */}
-          {/* Exemplo de Embed do YouTube */}
-          <iframe 
-            width="100%" 
-            height="100%" 
-            src="https://www.youtube.com/watch?v=j2WB_5eHa7M" 
-            title="Video Demo"
-            frameBorder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowFullScreen
-            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-          ></iframe>
+        <div className="max-w-4xl mx-auto aspect-video bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700 relative group">
           
-          {/* Overlay se não usar iframe autoplay */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             {/* <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center pl-1 shadow-lg animate-pulse">
-                <FaPlay className="text-3xl text-white" />
-             </div> */}
-          </div>
+          {/* PLAYER DE VÍDEO NATIVO 
+             1. Coloque seu arquivo de vídeo na pasta 'public' do projeto.
+             2. Nomeie o arquivo como 'demo-video.mp4' (ou altere o src abaixo).
+          */}
+          <video 
+            className="w-full h-full object-cover"
+            controls 
+            preload="metadata"
+            // Você pode adicionar uma imagem de capa (poster) colocando-a na pasta public também
+            // poster="/poster-video.jpg" 
+          >
+            <source src="/demo-video.mp4" type="video/mp4" />
+            Seu navegador não suporta a tag de vídeo.
+          </video>
+
         </div>
+        <p className="mt-4 text-gray-400 text-sm">Assista a uma rápida demonstração da plataforma.</p>
       </div>
     </section>
   );
