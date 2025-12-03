@@ -1,4 +1,16 @@
-// next.config.mjs
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  disable: process.env.NODE_ENV === "development", // Desativa em desenvolvimento para não atrapalhar
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -6,25 +18,25 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // Fotos do Google Auth
+        hostname: 'lh3.googleusercontent.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com', // Seus uploads do Cloudinary
+        hostname: 'res.cloudinary.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com', // Imagens de exemplo dos temas
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'i.pinimg.com', // NOVO: Permite imagens do Pinterest
+        hostname: 'i.pinimg.com',
         port: '',
         pathname: '/**',
       },
@@ -32,4 +44,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

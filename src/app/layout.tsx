@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -15,13 +15,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// AQUI ESTÁ A MUDANÇA: Atualizamos o title e description
 export const metadata: Metadata = {
   title: "Meus Links Pro - Seus links em um só lugar",
   description: "Crie sua página de links personalizada e compartilhe com o mundo.",
+  manifest: "/manifest.json",
   icons: {
-    icon: '/favicon.ico', // Garante que o navegador busque o ícone certo
-  }
+    icon: '/favicon.ico',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Meus Links Pro",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -30,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Mantendo em Português do Brasil como configuramos antes
+    // Alterado para Português do Brasil
     <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
